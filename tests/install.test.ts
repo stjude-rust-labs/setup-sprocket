@@ -160,7 +160,8 @@ describe('installRelease', () => {
   it('wraps digest verification errors with the asset name', async () => {
     const platform = resolvePlatform('Linux', 'X64');
     const { deps, verifyDigest } = await dependencies(platform.executable);
-    verifyDigest.mockRejectedValue(new Error('checksum mismatch'));
+    const digestError = new Error('checksum mismatch');
+    verifyDigest.mockRejectedValue(digestError);
     const rejection = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
       platform,
@@ -170,13 +171,14 @@ describe('installRelease', () => {
     expect((rejection as Error).message).toMatch(
       /sprocket-v0\.27\.0-x86_64-unknown-linux-gnu\.tar\.gz/,
     );
-    expect((rejection as Error).cause).toBeInstanceOf(Error);
+    expect((rejection as Error).cause).toBe(digestError);
   });
 
   it('wraps download failures with the asset name', async () => {
     const platform = resolvePlatform('Linux', 'X64');
     const { deps, downloadTool } = await dependencies(platform.executable);
-    downloadTool.mockRejectedValue(new Error('connection refused'));
+    const downloadError = new Error('connection refused');
+    downloadTool.mockRejectedValue(downloadError);
     const rejection = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
       platform,
@@ -186,13 +188,14 @@ describe('installRelease', () => {
     expect((rejection as Error).message).toMatch(
       /Failed to download release asset sprocket-v0\.27\.0-x86_64-unknown-linux-gnu\.tar\.gz/,
     );
-    expect((rejection as Error).cause).toBeInstanceOf(Error);
+    expect((rejection as Error).cause).toBe(downloadError);
   });
 
   it('wraps extraction failures with the asset name', async () => {
     const platform = resolvePlatform('Linux', 'X64');
     const { deps, extractTar } = await dependencies(platform.executable);
-    extractTar.mockRejectedValue(new Error('corrupt archive'));
+    const extractError = new Error('corrupt archive');
+    extractTar.mockRejectedValue(extractError);
     const rejection = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
       platform,
@@ -202,13 +205,14 @@ describe('installRelease', () => {
     expect((rejection as Error).message).toMatch(
       /Failed to extract release asset sprocket-v0\.27\.0-x86_64-unknown-linux-gnu\.tar\.gz/,
     );
-    expect((rejection as Error).cause).toBeInstanceOf(Error);
+    expect((rejection as Error).cause).toBe(extractError);
   });
 
   it('wraps cacheDir failures with the release version', async () => {
     const platform = resolvePlatform('Linux', 'X64');
     const { deps, cacheDir } = await dependencies(platform.executable);
-    cacheDir.mockRejectedValue(new Error('disk full'));
+    const cacheDirError = new Error('disk full');
+    cacheDir.mockRejectedValue(cacheDirError);
     const rejection = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
       platform,
@@ -218,13 +222,14 @@ describe('installRelease', () => {
     expect((rejection as Error).message).toMatch(
       /Failed to cache Sprocket v0\.27\.0/,
     );
-    expect((rejection as Error).cause).toBeInstanceOf(Error);
+    expect((rejection as Error).cause).toBe(cacheDirError);
   });
 
   it('wraps fresh-install smoke-check failures with the release version', async () => {
     const platform = resolvePlatform('Linux', 'X64');
     const { deps, smokeCheck } = await dependencies(platform.executable);
-    smokeCheck.mockRejectedValue(new Error('binary crashed'));
+    const smokeCheckError = new Error('binary crashed');
+    smokeCheck.mockRejectedValue(smokeCheckError);
     const rejection = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
       platform,
@@ -234,14 +239,15 @@ describe('installRelease', () => {
     expect((rejection as Error).message).toMatch(
       /Installed Sprocket v0\.27\.0 did not run/,
     );
-    expect((rejection as Error).cause).toBeInstanceOf(Error);
+    expect((rejection as Error).cause).toBe(smokeCheckError);
   });
 
   it('wraps cached-install smoke-check failures with the release version', async () => {
     const platform = resolvePlatform('Linux', 'X64');
     const { deps, find, smokeCheck } = await dependencies(platform.executable);
     find.mockReturnValue('/tool/cache/sprocket');
-    smokeCheck.mockRejectedValue(new Error('binary crashed'));
+    const cachedSmokeCheckError = new Error('binary crashed');
+    smokeCheck.mockRejectedValue(cachedSmokeCheckError);
     const rejection = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
       platform,
@@ -251,6 +257,6 @@ describe('installRelease', () => {
     expect((rejection as Error).message).toMatch(
       /Cached Sprocket v0\.27\.0 did not run/,
     );
-    expect((rejection as Error).cause).toBeInstanceOf(Error);
+    expect((rejection as Error).cause).toBe(cachedSmokeCheckError);
   });
 });

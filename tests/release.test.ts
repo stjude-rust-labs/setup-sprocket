@@ -28,8 +28,12 @@ const completeRelease: RawRelease = {
 
 describe('resolveRelease', () => {
   it('uses the latest stable endpoint for latest', async () => {
-    const getLatestRelease = vi.fn<() => Promise<RawRelease>>().mockResolvedValue(completeRelease);
-    const getReleaseByTag = vi.fn<(tag: string) => Promise<RawRelease>>().mockResolvedValue(completeRelease);
+    const getLatestRelease = vi
+      .fn<() => Promise<RawRelease>>()
+      .mockResolvedValue(completeRelease);
+    const getReleaseByTag = vi
+      .fn<(tag: string) => Promise<RawRelease>>()
+      .mockResolvedValue(completeRelease);
     const api: ReleaseApi = { getLatestRelease, getReleaseByTag };
     const release = await resolveRelease('latest', api);
     expect(getLatestRelease).toHaveBeenCalledOnce();
@@ -38,7 +42,9 @@ describe('resolveRelease', () => {
   });
 
   it('looks up explicit versions by normalized tag', async () => {
-    const getReleaseByTag = vi.fn<(tag: string) => Promise<RawRelease>>().mockResolvedValue(completeRelease);
+    const getReleaseByTag = vi
+      .fn<(tag: string) => Promise<RawRelease>>()
+      .mockResolvedValue(completeRelease);
     const api: ReleaseApi = {
       getLatestRelease: vi.fn(),
       getReleaseByTag,
@@ -56,10 +62,12 @@ describe('resolveRelease', () => {
   });
 
   it('reports an explicit release that does not exist', async () => {
-    const getReleaseByTag = vi.fn<(tag: string) => Promise<RawRelease>>().mockRejectedValue({
-      status: 404,
-      message: 'Not Found',
-    });
+    const getReleaseByTag = vi
+      .fn<(tag: string) => Promise<RawRelease>>()
+      .mockRejectedValue({
+        status: 404,
+        message: 'Not Found',
+      });
     const api: ReleaseApi = {
       getLatestRelease: vi.fn(),
       getReleaseByTag,
@@ -70,10 +78,12 @@ describe('resolveRelease', () => {
   });
 
   it('explains API rate-limit failures', async () => {
-    const getLatestRelease = vi.fn<() => Promise<RawRelease>>().mockRejectedValue({
-      status: 403,
-      message: 'API rate limit exceeded',
-    });
+    const getLatestRelease = vi
+      .fn<() => Promise<RawRelease>>()
+      .mockRejectedValue({
+        status: 403,
+        message: 'API rate limit exceeded',
+      });
     const api: ReleaseApi = {
       getLatestRelease,
       getReleaseByTag: vi.fn(),
@@ -84,10 +94,12 @@ describe('resolveRelease', () => {
   });
 
   it('non-rate-limit 403 yields the generic error', async () => {
-    const getLatestRelease = vi.fn<() => Promise<RawRelease>>().mockRejectedValue({
-      status: 403,
-      message: 'Forbidden',
-    });
+    const getLatestRelease = vi
+      .fn<() => Promise<RawRelease>>()
+      .mockRejectedValue({
+        status: 403,
+        message: 'Forbidden',
+      });
     const api: ReleaseApi = {
       getLatestRelease,
       getReleaseByTag: vi.fn(),

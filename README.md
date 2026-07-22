@@ -36,8 +36,7 @@ The `installed-version` output contains the normalized version:
 
 The action understands Linux, macOS, and Windows runners on `X64` and `ARM64`.
 Installation succeeds only when the selected Sprocket release publishes the
-matching asset. Release asset sets can differ; for example, `v0.28.0` does not
-contain a macOS Intel asset.
+matching asset.
 
 The action fails rather than building from source, selecting another version, or
 changing installation methods.

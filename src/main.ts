@@ -14,7 +14,6 @@ export interface ActionDependencies {
   setOutput: (name: string, value: string) => void;
   addPath: (path: string) => void;
   info: (message: string) => void;
-  warning: (message: string) => void;
   createReleaseApi: (token: string) => ReleaseApi;
   resolveRelease: (input: string, api: ReleaseApi) => Promise<Release>;
   resolvePlatform: (os: string, arch: string) => Platform;
@@ -30,7 +29,6 @@ const defaultDependencies: ActionDependencies = {
   setOutput: core.setOutput,
   addPath: core.addPath,
   info: core.info,
-  warning: core.warning,
   createReleaseApi,
   resolveRelease,
   resolvePlatform,

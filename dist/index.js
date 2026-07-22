@@ -34934,7 +34934,6 @@ const main_defaultDependencies = {
     setOutput: core.setOutput,
     addPath: core.addPath,
     info: core.info,
-    warning: core.warning,
     createReleaseApi: createReleaseApi,
     resolveRelease: resolveRelease,
     resolvePlatform: resolvePlatform,

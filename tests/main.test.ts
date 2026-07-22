@@ -27,7 +27,6 @@ function dependencies(version = ''): ActionDependencies {
     setOutput: vi.fn(),
     addPath: vi.fn(),
     info: vi.fn(),
-    warning: vi.fn(),
     createReleaseApi: vi.fn().mockReturnValue({} as ReleaseApi),
     resolveRelease: vi.fn().mockResolvedValue(release),
     resolvePlatform: vi.fn().mockReturnValue(platform),
@@ -65,5 +64,12 @@ describe('run', () => {
     await expect(run(deps)).rejects.toThrow(
       'RUNNER_OS and RUNNER_ARCH must be set by GitHub Actions.',
     );
+  });
+
+  it('trims whitespace from version input', async () => {
+    const deps = dependencies('  v0.27.0  ');
+    await run(deps);
+    const { resolveRelease } = deps;
+    expect(resolveRelease).toHaveBeenCalledWith('v0.27.0', expect.anything());
   });
 });

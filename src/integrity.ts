@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 
+/**
+ * Verifies that the file at `path` matches `digest` (format `"algorithm:hex"`).
+ * Emits a `warning` and returns without error when `digest` is `null`.
+ *
+ * @throws For a malformed digest string, an unsupported algorithm, or a checksum mismatch.
+ */
 export async function verifyDigest(
   path: string,
   digest: string | null,

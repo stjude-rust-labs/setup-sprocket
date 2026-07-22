@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { run, type ActionDependencies } from '../src/main.js';
 import type { Platform } from '../src/platform.js';
-import type { Release, ReleaseApi } from '../src/release.js';
+import type { Release } from '../src/release.js';
 
 const platform: Platform = {
   os: 'Linux',
@@ -27,7 +27,7 @@ function dependencies(version = ''): ActionDependencies {
     setOutput: vi.fn(),
     addPath: vi.fn(),
     info: vi.fn(),
-    createReleaseApi: vi.fn().mockReturnValue({} as ReleaseApi),
+    createReleaseApi: vi.fn().mockReturnValue({}),
     resolveRelease: vi.fn().mockResolvedValue(release),
     resolvePlatform: vi.fn().mockReturnValue(platform),
     installRelease: vi.fn().mockResolvedValue({

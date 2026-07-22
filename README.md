@@ -8,7 +8,7 @@
 
 ```yaml
 steps:
-  - uses: actions/checkout@v6
+  - uses: actions/checkout@v7
   - uses: stjude-rust-labs/setup-sprocket@v1
     with:
       version: '0.27.0'

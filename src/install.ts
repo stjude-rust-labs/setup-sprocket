@@ -11,28 +11,40 @@ import { type Release, selectAsset } from './release.js';
 
 const execute = promisify(execFile);
 
+/** Result of a successful Sprocket installation: the cache directory and full path to the executable. */
 export interface Installation {
+  /** Absolute path to the directory added to `PATH` (the cache entry root). */
   readonly directory: string;
+  /** Absolute path to the Sprocket executable inside `directory`. */
   readonly executablePath: string;
 }
 
+/** Side-effecting collaborators required by {@link installRelease}, injectable for testing. */
 export interface InstallDependencies {
+  /** Looks up a previously cached tool directory; returns an empty string on cache miss. */
   find(tool: string, version: string, architecture: string): string;
+  /** Downloads `url` and returns the local path of the downloaded file. */
   downloadTool(url: string): Promise<string>;
+  /** Extracts a `.tar.gz` archive and returns the extraction directory. */
   extractTar(path: string): Promise<string>;
+  /** Extracts a `.zip` archive and returns the extraction directory. */
   extractZip(path: string): Promise<string>;
+  /** Persists a directory in the Actions tool cache and returns the cached directory path. */
   cacheDir(
     sourceDirectory: string,
     tool: string,
     version: string,
     architecture: string,
   ): Promise<string>;
+  /** Verifies the integrity of the file at `path` against `digest`. */
   verifyDigest(
     path: string,
     digest: string | null,
     warning: (message: string) => void,
   ): Promise<void>;
+  /** Runs the executable at `executablePath` with `--version` to confirm it is operable. */
   smokeCheck(executablePath: string): Promise<void>;
+  /** Emits a non-fatal warning message via the Actions toolkit. */
   warning(message: string): void;
 }
 
@@ -51,6 +63,13 @@ const defaultDependencies: InstallDependencies = {
   },
 };
 
+/**
+ * Downloads, verifies, extracts, and caches the Sprocket release asset for
+ * `platform`, then smoke-tests the executable.
+ * Returns immediately from the tool cache when the version was previously installed.
+ *
+ * @throws For download, verification, extraction, caching, or smoke-test failures.
+ */
 export async function installRelease(
   release: Release,
   platform: Platform,

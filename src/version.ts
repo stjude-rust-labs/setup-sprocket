@@ -1,10 +1,17 @@
 const MINIMUM_VERSION = [0, 8, 0] as const;
 const VERSION_PATTERN = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
+/** Returns `true` when `input` (trimmed, case-insensitive) equals `"latest"`. */
 export function isLatest(input: string): boolean {
   return input.trim().toLowerCase() === 'latest';
 }
 
+/**
+ * Parses `input` as a semver string (with or without a leading `v`), enforces
+ * the minimum supported version, and returns the canonical `v<major>.<minor>.<patch>` form.
+ *
+ * @throws When `input` is not a valid semver string or is below the minimum supported version.
+ */
 export function normalizeVersion(input: string): string {
   const value = input.trim();
   const match = VERSION_PATTERN.exec(value);

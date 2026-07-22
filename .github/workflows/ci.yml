@@ -45,15 +45,20 @@ jobs:
           version: 0.27.0
           github-token: ${{ github.token }}
       - name: Verify installed version
+        env:
+          INSTALLED_VERSION: ${{ steps.sprocket.outputs.installed-version }}
         shell: bash
         run: |
           sprocket --version
-          test "${{ steps.sprocket.outputs.installed-version }}" = "v0.27.0"
+          test "$INSTALLED_VERSION" = "v0.27.0"
 
   latest:
     strategy:
       fail-fast: false
       matrix:
+        # This runner list must mirror the platform assets that Sprocket's
+        # latest stable release publishes. Update the matrix whenever the
+        # upstream asset set changes.
         runner:
           - ubuntu-latest
           - ubuntu-24.04-arm
@@ -71,6 +76,9 @@ jobs:
       - run: sprocket --version
 
   missing-asset:
+    # Positive-control leg: v0.28.0 omitted macOS Intel assets, so this job is
+    # expected to fail. tests/release.test.ts asserts the exact error text that
+    # selectAsset emits when the platform asset is absent.
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v6

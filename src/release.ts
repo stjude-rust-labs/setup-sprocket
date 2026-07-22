@@ -80,7 +80,7 @@ export async function resolveRelease(
         cause: error,
       });
     }
-    if (status === 403 || status === 429) {
+    if (status === 429 || (status === 403 && isRateLimitError(error))) {
       throw new Error(
         'GitHub rejected the Sprocket release request; pass github-token or retry after the API rate limit resets.',
         { cause: error },
@@ -105,6 +105,18 @@ function errorStatus(error: unknown): number | undefined {
     return error.status;
   }
   return undefined;
+}
+
+function isRateLimitError(error: unknown): boolean {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return /rate limit/i.test(error.message);
+  }
+  return false;
 }
 
 export function selectAsset(

@@ -28,17 +28,23 @@ const completeRelease: RawRelease = {
 
 describe('resolveRelease', () => {
   it('uses the latest stable endpoint for latest', async () => {
-    const api = apiWith(completeRelease);
+    const getLatestRelease = vi.fn<() => Promise<RawRelease>>().mockResolvedValue(completeRelease);
+    const getReleaseByTag = vi.fn<(tag: string) => Promise<RawRelease>>().mockResolvedValue(completeRelease);
+    const api: ReleaseApi = { getLatestRelease, getReleaseByTag };
     const release = await resolveRelease('latest', api);
-    expect(api.getLatestRelease).toHaveBeenCalledOnce();
-    expect(api.getReleaseByTag).not.toHaveBeenCalled();
+    expect(getLatestRelease).toHaveBeenCalledOnce();
+    expect(getReleaseByTag).not.toHaveBeenCalled();
     expect(release.version).toBe('v0.27.0');
   });
 
   it('looks up explicit versions by normalized tag', async () => {
-    const api = apiWith(completeRelease);
+    const getReleaseByTag = vi.fn<(tag: string) => Promise<RawRelease>>().mockResolvedValue(completeRelease);
+    const api: ReleaseApi = {
+      getLatestRelease: vi.fn(),
+      getReleaseByTag,
+    };
     const release = await resolveRelease('0.27.0', api);
-    expect(api.getReleaseByTag).toHaveBeenCalledWith('v0.27.0');
+    expect(getReleaseByTag).toHaveBeenCalledWith('v0.27.0');
     expect(release.version).toBe('v0.27.0');
   });
 
@@ -50,24 +56,44 @@ describe('resolveRelease', () => {
   });
 
   it('reports an explicit release that does not exist', async () => {
-    const api = apiWith(completeRelease);
-    vi.mocked(api.getReleaseByTag).mockRejectedValue({
+    const getReleaseByTag = vi.fn<(tag: string) => Promise<RawRelease>>().mockRejectedValue({
       status: 404,
       message: 'Not Found',
     });
+    const api: ReleaseApi = {
+      getLatestRelease: vi.fn(),
+      getReleaseByTag,
+    };
     await expect(resolveRelease('0.29.0', api)).rejects.toThrow(
       'Sprocket release v0.29.0 was not found.',
     );
   });
 
   it('explains API rate-limit failures', async () => {
-    const api = apiWith(completeRelease);
-    vi.mocked(api.getLatestRelease).mockRejectedValue({
+    const getLatestRelease = vi.fn<() => Promise<RawRelease>>().mockRejectedValue({
       status: 403,
       message: 'API rate limit exceeded',
     });
+    const api: ReleaseApi = {
+      getLatestRelease,
+      getReleaseByTag: vi.fn(),
+    };
     await expect(resolveRelease('latest', api)).rejects.toThrow(
       'GitHub rejected the Sprocket release request; pass github-token or retry after the API rate limit resets.',
+    );
+  });
+
+  it('non-rate-limit 403 yields the generic error', async () => {
+    const getLatestRelease = vi.fn<() => Promise<RawRelease>>().mockRejectedValue({
+      status: 403,
+      message: 'Forbidden',
+    });
+    const api: ReleaseApi = {
+      getLatestRelease,
+      getReleaseByTag: vi.fn(),
+    };
+    await expect(resolveRelease('latest', api)).rejects.toThrow(
+      /Failed to query Sprocket releases/,
     );
   });
 });

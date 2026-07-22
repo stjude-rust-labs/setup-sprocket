@@ -107,7 +107,7 @@ describe('installRelease', () => {
 
   it('reuses an exact cached installation without downloading', async () => {
     const platform = resolvePlatform('Linux', 'X64');
-    const { deps, find, downloadTool } = await dependencies(
+    const { deps, find, downloadTool, smokeCheck } = await dependencies(
       platform.executable,
     );
     find.mockReturnValue('/tool/cache/sprocket');
@@ -118,6 +118,7 @@ describe('installRelease', () => {
     );
     expect(downloadTool).not.toHaveBeenCalled();
     expect(result.executablePath).toBe('/tool/cache/sprocket/sprocket');
+    expect(smokeCheck).toHaveBeenCalledWith('/tool/cache/sprocket/sprocket');
   });
 
   it('fails when the archive lacks the root-level executable', async () => {
@@ -130,5 +131,33 @@ describe('installRelease', () => {
         deps,
       ),
     ).rejects.toThrow(/does not contain root-level executable sprocket/i);
+  });
+
+  it('preserves access error as cause when root-level executable is absent', async () => {
+    const platform = resolvePlatform('Linux', 'X64');
+    const { deps } = await dependencies('different-file');
+    const rejection = await installRelease(
+      release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
+      platform,
+      deps,
+    ).catch((e: unknown) => e);
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as Error).cause).toBeInstanceOf(Error);
+  });
+
+  it('wraps digest verification errors with the asset name', async () => {
+    const platform = resolvePlatform('Linux', 'X64');
+    const { deps, verifyDigest } = await dependencies(platform.executable);
+    verifyDigest.mockRejectedValue(new Error('checksum mismatch'));
+    const rejection = await installRelease(
+      release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
+      platform,
+      deps,
+    ).catch((e: unknown) => e);
+    expect(rejection).toBeInstanceOf(Error);
+    expect((rejection as Error).message).toMatch(
+      /sprocket-v0\.27\.0-x86_64-unknown-linux-gnu\.tar\.gz/,
+    );
+    expect((rejection as Error).cause).toBeInstanceOf(Error);
   });
 });

@@ -75,8 +75,11 @@ export async function installRelease(
     `Failed to download release asset ${asset.name}`,
     () => dependencies.downloadTool(asset.downloadUrl),
   );
-  await dependencies.verifyDigest(archive, asset.digest, (msg) =>
-    dependencies.warning(msg),
+  await withContext(
+    `Failed to verify release asset ${asset.name}`,
+    () => dependencies.verifyDigest(archive, asset.digest, (msg) =>
+      dependencies.warning(msg),
+    ),
   );
 
   const extracted = await withContext(
@@ -90,9 +93,10 @@ export async function installRelease(
 
   try {
     await access(extractedExecutable);
-  } catch {
+  } catch (error) {
     throw new Error(
       `Release asset ${asset.name} does not contain root-level executable ${platform.executable}.`,
+      { cause: error },
     );
   }
 

@@ -76,7 +76,7 @@ function release(name: string): Release {
 describe('installRelease', () => {
   it('downloads, verifies, extracts, caches, and checks a tar archive', async () => {
     const platform = resolvePlatform('Linux', 'X64');
-    const { deps, extractTar, extractZip, verifyDigest, smokeCheck } =
+    const { deps, extractTar, extractZip, downloadTool, verifyDigest, smokeCheck } =
       await dependencies(platform.executable);
     const result = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
@@ -84,16 +84,21 @@ describe('installRelease', () => {
       deps,
     );
 
+    const archivePath = (await downloadTool.mock.results[0]?.value) as string;
     expect(extractTar).toHaveBeenCalledOnce();
     expect(extractZip).not.toHaveBeenCalled();
-    expect(verifyDigest).toHaveBeenCalled();
+    expect(verifyDigest).toHaveBeenCalledWith(
+      archivePath,
+      'sha256:abc123',
+      expect.any(Function),
+    );
     expect(smokeCheck).toHaveBeenCalledWith(result.executablePath);
     expect(result.directory).toContain('cached');
   });
 
   it('uses zip extraction for Windows', async () => {
     const platform = resolvePlatform('Windows', 'X64');
-    const { deps, extractZip, extractTar } = await dependencies(
+    const { deps, extractZip, extractTar, smokeCheck } = await dependencies(
       platform.executable,
     );
     await installRelease(
@@ -103,6 +108,7 @@ describe('installRelease', () => {
     );
     expect(extractZip).toHaveBeenCalledOnce();
     expect(extractTar).not.toHaveBeenCalled();
+    expect(smokeCheck).toHaveBeenCalledOnce();
   });
 
   it('reuses an exact cached installation without downloading', async () => {

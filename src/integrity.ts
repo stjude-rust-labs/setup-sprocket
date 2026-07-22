@@ -14,8 +14,15 @@ export async function verifyDigest(
   }
 
   const separator = digest.indexOf(':');
-  const algorithm = separator === -1 ? digest : digest.slice(0, separator);
-  const expected = separator === -1 ? '' : digest.slice(separator + 1);
+  if (separator === -1) {
+    throw new Error(
+      'Malformed release asset digest: expected format "algorithm:hex", got "' +
+        digest +
+        '".',
+    );
+  }
+  const algorithm = digest.slice(0, separator);
+  const expected = digest.slice(separator + 1);
   if (algorithm !== 'sha256') {
     throw new Error(
       `Unsupported release asset digest algorithm: ${algorithm}.`,

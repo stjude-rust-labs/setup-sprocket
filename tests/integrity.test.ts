@@ -46,4 +46,11 @@ describe('verifyDigest', () => {
       'Unsupported release asset digest algorithm: sha512.',
     );
   });
+
+  it('rejects a colon-free digest as malformed', async () => {
+    const path = await fixture('sprocket');
+    await expect(verifyDigest(path, 'sha256', vi.fn())).rejects.toThrow(
+      /malformed.*algorithm:hex/i,
+    );
+  });
 });

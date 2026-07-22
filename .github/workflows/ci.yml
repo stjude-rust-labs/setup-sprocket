@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run package
+      - name: Verify committed bundle
+        run: git diff --exit-code -- dist
+
+  pinned:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+          - runner: ubuntu-24.04-arm
+          - runner: macos-15-intel
+          - runner: macos-14
+          - runner: windows-latest
+          - runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install pinned Sprocket
+        id: sprocket
+        uses: ./
+        with:
+          version: 0.27.0
+          github-token: ${{ github.token }}
+      - name: Verify installed version
+        shell: bash
+        run: |
+          sprocket --version
+          test "${{ steps.sprocket.outputs.installed-version }}" = "v0.27.0"
+
+  latest:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-14
+          - windows-latest
+          - windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install latest Sprocket
+        uses: ./
+        with:
+          version: latest
+          github-token: ${{ github.token }}
+      - run: sprocket --version
+
+  missing-asset:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v6
+      - name: Attempt release that omits macOS Intel
+        id: install
+        continue-on-error: true
+        uses: ./
+        with:
+          version: 0.28.0
+          github-token: ${{ github.token }}
+      - name: Require the expected failure
+        env:
+          OUTCOME: ${{ steps.install.outcome }}
+        run: test "$OUTCOME" = "failure"

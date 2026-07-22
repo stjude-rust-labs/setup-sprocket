@@ -72,4 +72,11 @@ describe('run', () => {
     const { resolveRelease } = deps;
     expect(resolveRelease).toHaveBeenCalledWith('v0.27.0', expect.anything());
   });
+
+  it('defaults whitespace-only version input to latest', async () => {
+    const deps = dependencies('   ');
+    await run(deps);
+    const { resolveRelease } = deps;
+    expect(resolveRelease).toHaveBeenCalledWith('latest', expect.anything());
+  });
 });

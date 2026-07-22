@@ -75,9 +75,8 @@ export async function installRelease(
     `Failed to download release asset ${asset.name}`,
     () => dependencies.downloadTool(asset.downloadUrl),
   );
-  await withContext(
-    `Failed to verify release asset ${asset.name}`,
-    () => dependencies.verifyDigest(archive, asset.digest, (msg) =>
+  await withContext(`Failed to verify release asset ${asset.name}`, () =>
+    dependencies.verifyDigest(archive, asset.digest, (msg) =>
       dependencies.warning(msg),
     ),
   );

@@ -76,8 +76,14 @@ function release(name: string): Release {
 describe('installRelease', () => {
   it('downloads, verifies, extracts, caches, and checks a tar archive', async () => {
     const platform = resolvePlatform('Linux', 'X64');
-    const { deps, extractTar, extractZip, downloadTool, verifyDigest, smokeCheck } =
-      await dependencies(platform.executable);
+    const {
+      deps,
+      extractTar,
+      extractZip,
+      downloadTool,
+      verifyDigest,
+      smokeCheck,
+    } = await dependencies(platform.executable);
     const result = await installRelease(
       release('sprocket-v0.27.0-x86_64-unknown-linux-gnu.tar.gz'),
       platform,

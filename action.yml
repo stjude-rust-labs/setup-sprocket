@@ -1,0 +1,24 @@
+name: Setup Sprocket
+description: Install a Sprocket release and add it to PATH
+author: St. Jude Rust Labs
+
+inputs:
+  version:
+    description: Exact Sprocket version, with or without a leading v, or latest
+    required: false
+    default: latest
+  github-token:
+    description: GitHub token used to query release metadata
+    required: false
+
+outputs:
+  installed-version:
+    description: Normalized Sprocket version that was installed
+
+runs:
+  using: node24
+  main: dist/index.js
+
+branding:
+  icon: settings
+  color: blue

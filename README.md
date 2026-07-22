@@ -11,7 +11,7 @@ steps:
   - uses: actions/checkout@v6
   - uses: stjude-rust-labs/setup-sprocket@v1
     with:
-      version: '0.28.0'
+      version: '0.27.0'
       github-token: ${{ github.token }}
   - run: sprocket --version
 ```

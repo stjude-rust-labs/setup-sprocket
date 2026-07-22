@@ -1,0 +1,38 @@
+{
+  "name": "setup-sprocket",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "package": "npm run build",
+    "all": "npm run check && npm run package"
+  },
+  "dependencies": {
+    "@actions/core": "3.0.1",
+    "@actions/tool-cache": "4.0.0",
+    "@octokit/rest": "22.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.3",
+    "@vercel/ncc": "0.44.1",
+    "eslint": "10.7.0",
+    "eslint-plugin-jsdoc": "63.2.0",
+    "eslint-plugin-tsdoc": "0.5.2",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.65.0",
+    "vitest": "4.1.10"
+  }
+}

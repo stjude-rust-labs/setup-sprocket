@@ -1,8 +1,28 @@
-# Setup Sprocket
+<img style="margin: 0px" alt="Setup Sprocket repository header" src="./assets/repo-header.png" />
+<hr />
 
-`stjude-rust-labs/setup-sprocket` installs a prebuilt
-[Sprocket](https://github.com/stjude-rust-labs/sprocket) release and adds the
-`sprocket` executable to `PATH`.
+<p align="center">
+  <a href="https://github.com/stjude-rust-labs/setup-sprocket/actions/workflows/ci.yml">
+    <img alt="CI status" src="https://github.com/stjude-rust-labs/setup-sprocket/actions/workflows/ci.yml/badge.svg" />
+  </a>
+  <a href="https://github.com/stjude-rust-labs/setup-sprocket/releases/latest">
+    <img alt="Latest release" src="https://img.shields.io/github/v/release/stjude-rust-labs/setup-sprocket" />
+  </a>
+  <a href="https://github.com/stjude-rust-labs/setup-sprocket#license">
+    <img alt="License: MIT or Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue" />
+  </a>
+</p>
+
+<p align="center">
+  Install and cache Sprocket releases in GitHub Actions across Linux, macOS, and Windows, with version selection and SHA-256 verification.
+  <br />
+  <br />
+  <a href="https://github.com/stjude-rust-labs/setup-sprocket/issues/new?assignees=&title=Descriptive%20Title&labels=enhancement">Request Feature</a>
+  ·
+  <a href="https://github.com/stjude-rust-labs/setup-sprocket/issues/new?assignees=&title=Descriptive%20Title&labels=bug">Report Bug</a>
+  ·
+  ⭐ Consider starring the repo! ⭐
+</p>
 
 ## Usage
 

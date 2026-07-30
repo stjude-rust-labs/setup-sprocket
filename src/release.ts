@@ -1,10 +1,8 @@
 import { Octokit } from '@octokit/rest';
 
+import { errorStatus, isRateLimitError, OWNER, REPOSITORY } from './github.js';
 import { assetName, type Platform } from './platform.js';
 import { isLatest, normalizeVersion } from './version.js';
-
-const OWNER = 'stjude-rust-labs';
-const REPOSITORY = 'sprocket';
 
 /** Describes a single downloadable file attached to a GitHub release. */
 export interface ReleaseAsset {
@@ -113,30 +111,6 @@ export async function resolveRelease(
   }
   const version = normalizeVersion(raw.tagName);
   return { version, assets: raw.assets };
-}
-
-function errorStatus(error: unknown): number | undefined {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    typeof error.status === 'number'
-  ) {
-    return error.status;
-  }
-  return undefined;
-}
-
-function isRateLimitError(error: unknown): boolean {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof error.message === 'string'
-  ) {
-    return /rate limit/i.test(error.message);
-  }
-  return false;
 }
 
 /**

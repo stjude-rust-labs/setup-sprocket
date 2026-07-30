@@ -34058,853 +34058,6 @@ function getIDToken(aud) {
  */
 
 //# sourceMappingURL=core.js.map
-;// CONCATENATED MODULE: external "node:child_process"
-const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
-;// CONCATENATED MODULE: external "node:fs/promises"
-const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
-// EXTERNAL MODULE: external "node:util"
-var external_node_util_ = __nccwpck_require__(7975);
-// EXTERNAL MODULE: ./node_modules/semver/index.js
-var node_modules_semver = __nccwpck_require__(2088);
-;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/manifest.js
-var manifest_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-
-
-
-
-// Internal object for testability (allows mocking in ESM)
-const _internal = {
-    readLinuxVersionFile() {
-        const lsbReleaseFile = '/etc/lsb-release';
-        const osReleaseFile = '/etc/os-release';
-        let contents = '';
-        if (external_fs_namespaceObject.existsSync(lsbReleaseFile)) {
-            contents = external_fs_namespaceObject.readFileSync(lsbReleaseFile).toString();
-        }
-        else if (external_fs_namespaceObject.existsSync(osReleaseFile)) {
-            contents = external_fs_namespaceObject.readFileSync(osReleaseFile).toString();
-        }
-        return contents;
-    }
-};
-function _findMatch(versionSpec, stable, candidates, archFilter) {
-    return manifest_awaiter(this, void 0, void 0, function* () {
-        const platFilter = os.platform();
-        let result;
-        let match;
-        let file;
-        for (const candidate of candidates) {
-            const version = candidate.version;
-            debug(`check ${version} satisfies ${versionSpec}`);
-            if (semver.satisfies(version, versionSpec) &&
-                (!stable || candidate.stable === stable)) {
-                file = candidate.files.find(item => {
-                    debug(`${item.arch}===${archFilter} && ${item.platform}===${platFilter}`);
-                    let chk = item.arch === archFilter && item.platform === platFilter;
-                    if (chk && item.platform_version) {
-                        const osVersion = _getOsVersion();
-                        if (osVersion === item.platform_version) {
-                            chk = true;
-                        }
-                        else {
-                            chk = semver.satisfies(osVersion, item.platform_version);
-                        }
-                    }
-                    return chk;
-                });
-                if (file) {
-                    debug(`matched ${candidate.version}`);
-                    match = candidate;
-                    break;
-                }
-            }
-        }
-        if (match && file) {
-            // clone since we're mutating the file list to be only the file that matches
-            result = Object.assign({}, match);
-            result.files = [file];
-        }
-        return result;
-    });
-}
-function _getOsVersion() {
-    // TODO: add windows and other linux, arm variants
-    // right now filtering on version is only an ubuntu and macos scenario for tools we build for hosted (python)
-    const plat = os.platform();
-    let version = '';
-    if (plat === 'darwin') {
-        version = cp.execSync('sw_vers -productVersion').toString();
-    }
-    else if (plat === 'linux') {
-        // lsb_release process not in some containers, readfile
-        // Run cat /etc/lsb-release
-        // DISTRIB_ID=Ubuntu
-        // DISTRIB_RELEASE=18.04
-        // DISTRIB_CODENAME=bionic
-        // DISTRIB_DESCRIPTION="Ubuntu 18.04.4 LTS"
-        const lsbContents = _internal.readLinuxVersionFile();
-        if (lsbContents) {
-            const lines = lsbContents.split('\n');
-            for (const line of lines) {
-                const parts = line.split('=');
-                if (parts.length === 2 &&
-                    (parts[0].trim() === 'VERSION_ID' ||
-                        parts[0].trim() === 'DISTRIB_RELEASE')) {
-                    version = parts[1].trim().replace(/^"/, '').replace(/"$/, '');
-                    break;
-                }
-            }
-        }
-    }
-    return version;
-}
-// Alias for backwards compatibility
-function _readLinuxVersionFile() {
-    return _internal.readLinuxVersionFile();
-}
-//# sourceMappingURL=manifest.js.map
-;// CONCATENATED MODULE: external "stream"
-const external_stream_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("stream");
-// EXTERNAL MODULE: external "util"
-var external_util_ = __nccwpck_require__(9023);
-;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/retry-helper.js
-var retry_helper_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-/**
- * Internal class for retries
- */
-class RetryHelper {
-    constructor(maxAttempts, minSeconds, maxSeconds) {
-        if (maxAttempts < 1) {
-            throw new Error('max attempts should be greater than or equal to 1');
-        }
-        this.maxAttempts = maxAttempts;
-        this.minSeconds = Math.floor(minSeconds);
-        this.maxSeconds = Math.floor(maxSeconds);
-        if (this.minSeconds > this.maxSeconds) {
-            throw new Error('min seconds should be less than or equal to max seconds');
-        }
-    }
-    execute(action, isRetryable) {
-        return retry_helper_awaiter(this, void 0, void 0, function* () {
-            let attempt = 1;
-            while (attempt < this.maxAttempts) {
-                // Try
-                try {
-                    return yield action();
-                }
-                catch (err) {
-                    if (isRetryable && !isRetryable(err)) {
-                        throw err;
-                    }
-                    info(err.message);
-                }
-                // Sleep
-                const seconds = this.getSleepAmount();
-                info(`Waiting ${seconds} seconds before trying again`);
-                yield this.sleep(seconds);
-                attempt++;
-            }
-            // Last attempt
-            return yield action();
-        });
-    }
-    getSleepAmount() {
-        return (Math.floor(Math.random() * (this.maxSeconds - this.minSeconds + 1)) +
-            this.minSeconds);
-    }
-    sleep(seconds) {
-        return retry_helper_awaiter(this, void 0, void 0, function* () {
-            return new Promise(resolve => setTimeout(resolve, seconds * 1000));
-        });
-    }
-}
-//# sourceMappingURL=retry-helper.js.map
-;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/tool-cache.js
-var tool_cache_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class HTTPError extends Error {
-    constructor(httpStatusCode) {
-        super(`Unexpected HTTP response: ${httpStatusCode}`);
-        this.httpStatusCode = httpStatusCode;
-        Object.setPrototypeOf(this, new.target.prototype);
-    }
-}
-const tool_cache_IS_WINDOWS = process.platform === 'win32';
-const IS_MAC = process.platform === 'darwin';
-const userAgent = 'actions/tool-cache';
-/**
- * Download a tool from an url and stream it into a file
- *
- * @param url       url of tool to download
- * @param dest      path to download tool
- * @param auth      authorization header
- * @param headers   other headers
- * @returns         path to downloaded tool
- */
-function downloadTool(url, dest, auth, headers) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        dest = dest || external_path_namespaceObject.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
-        yield mkdirP(external_path_namespaceObject.dirname(dest));
-        core_debug(`Downloading ${url}`);
-        core_debug(`Destination ${dest}`);
-        const maxAttempts = 3;
-        const minSeconds = _getGlobal('TEST_DOWNLOAD_TOOL_RETRY_MIN_SECONDS', 10);
-        const maxSeconds = _getGlobal('TEST_DOWNLOAD_TOOL_RETRY_MAX_SECONDS', 20);
-        const retryHelper = new RetryHelper(maxAttempts, minSeconds, maxSeconds);
-        return yield retryHelper.execute(() => tool_cache_awaiter(this, void 0, void 0, function* () {
-            return yield downloadToolAttempt(url, dest || '', auth, headers);
-        }), (err) => {
-            if (err instanceof HTTPError && err.httpStatusCode) {
-                // Don't retry anything less than 500, except 408 Request Timeout and 429 Too Many Requests
-                if (err.httpStatusCode < 500 &&
-                    err.httpStatusCode !== 408 &&
-                    err.httpStatusCode !== 429) {
-                    return false;
-                }
-            }
-            // Otherwise retry
-            return true;
-        });
-    });
-}
-function downloadToolAttempt(url, dest, auth, headers) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        if (external_fs_namespaceObject.existsSync(dest)) {
-            throw new Error(`Destination file path ${dest} already exists`);
-        }
-        // Get the response headers
-        const http = new lib_HttpClient(userAgent, [], {
-            allowRetries: false
-        });
-        if (auth) {
-            core_debug('set auth');
-            if (headers === undefined) {
-                headers = {};
-            }
-            headers.authorization = auth;
-        }
-        const response = yield http.get(url, headers);
-        if (response.message.statusCode !== 200) {
-            const err = new HTTPError(response.message.statusCode);
-            core_debug(`Failed to download from "${url}". Code(${response.message.statusCode}) Message(${response.message.statusMessage})`);
-            throw err;
-        }
-        // Download the response body
-        const pipeline = external_util_.promisify(external_stream_namespaceObject.pipeline);
-        const responseMessageFactory = _getGlobal('TEST_DOWNLOAD_TOOL_RESPONSE_MESSAGE_FACTORY', () => response.message);
-        const readStream = responseMessageFactory();
-        let succeeded = false;
-        try {
-            yield pipeline(readStream, external_fs_namespaceObject.createWriteStream(dest));
-            core_debug('download complete');
-            succeeded = true;
-            return dest;
-        }
-        finally {
-            // Error, delete dest before retry
-            if (!succeeded) {
-                core_debug('download failed');
-                try {
-                    yield rmRF(dest);
-                }
-                catch (err) {
-                    core_debug(`Failed to delete '${dest}'. ${err.message}`);
-                }
-            }
-        }
-    });
-}
-/**
- * Extract a .7z file
- *
- * @param file     path to the .7z file
- * @param dest     destination directory. Optional.
- * @param _7zPath  path to 7zr.exe. Optional, for long path support. Most .7z archives do not have this
- * problem. If your .7z archive contains very long paths, you can pass the path to 7zr.exe which will
- * gracefully handle long paths. By default 7zdec.exe is used because it is a very small program and is
- * bundled with the tool lib. However it does not support long paths. 7zr.exe is the reduced command line
- * interface, it is smaller than the full command line interface, and it does support long paths. At the
- * time of this writing, it is freely available from the LZMA SDK that is available on the 7zip website.
- * Be sure to check the current license agreement. If 7zr.exe is bundled with your action, then the path
- * to 7zr.exe can be pass to this function.
- * @returns        path to the destination directory
- */
-function extract7z(file, dest, _7zPath) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        ok(tool_cache_IS_WINDOWS, 'extract7z() not supported on current OS');
-        ok(file, 'parameter "file" is required');
-        dest = yield _createExtractFolder(dest);
-        const originalCwd = process.cwd();
-        process.chdir(dest);
-        if (_7zPath) {
-            try {
-                const logLevel = core.isDebug() ? '-bb1' : '-bb0';
-                const args = [
-                    'x', // eXtract files with full paths
-                    logLevel, // -bb[0-3] : set output log level
-                    '-bd', // disable progress indicator
-                    '-sccUTF-8', // set charset for for console input/output
-                    file
-                ];
-                const options = {
-                    silent: true
-                };
-                yield exec(`"${_7zPath}"`, args, options);
-            }
-            finally {
-                process.chdir(originalCwd);
-            }
-        }
-        else {
-            const escapedScript = path
-                .join(__dirname, '..', 'scripts', 'Invoke-7zdec.ps1')
-                .replace(/'/g, "''")
-                .replace(/"|\n|\r/g, ''); // double-up single quotes, remove double quotes and newlines
-            const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, '');
-            const escapedTarget = dest.replace(/'/g, "''").replace(/"|\n|\r/g, '');
-            const command = `& '${escapedScript}' -Source '${escapedFile}' -Target '${escapedTarget}'`;
-            const args = [
-                '-NoLogo',
-                '-Sta',
-                '-NoProfile',
-                '-NonInteractive',
-                '-ExecutionPolicy',
-                'Unrestricted',
-                '-Command',
-                command
-            ];
-            const options = {
-                silent: true
-            };
-            try {
-                const powershellPath = yield io.which('powershell', true);
-                yield exec(`"${powershellPath}"`, args, options);
-            }
-            finally {
-                process.chdir(originalCwd);
-            }
-        }
-        return dest;
-    });
-}
-/**
- * Extract a compressed tar archive
- *
- * @param file     path to the tar
- * @param dest     destination directory. Optional.
- * @param flags    flags for the tar command to use for extraction. Defaults to 'xz' (extracting gzipped tars). Optional.
- * @returns        path to the destination directory
- */
-function extractTar(file_1, dest_1) {
-    return tool_cache_awaiter(this, arguments, void 0, function* (file, dest, flags = 'xz') {
-        if (!file) {
-            throw new Error("parameter 'file' is required");
-        }
-        // Create dest
-        dest = yield _createExtractFolder(dest);
-        // Determine whether GNU tar
-        core_debug('Checking tar --version');
-        let versionOutput = '';
-        yield exec_exec('tar --version', [], {
-            ignoreReturnCode: true,
-            silent: true,
-            listeners: {
-                stdout: (data) => (versionOutput += data.toString()),
-                stderr: (data) => (versionOutput += data.toString())
-            }
-        });
-        core_debug(versionOutput.trim());
-        const isGnuTar = versionOutput.toUpperCase().includes('GNU TAR');
-        // Initialize args
-        let args;
-        if (flags instanceof Array) {
-            args = flags;
-        }
-        else {
-            args = [flags];
-        }
-        if (isDebug() && !flags.includes('v')) {
-            args.push('-v');
-        }
-        let destArg = dest;
-        let fileArg = file;
-        if (tool_cache_IS_WINDOWS && isGnuTar) {
-            args.push('--force-local');
-            destArg = dest.replace(/\\/g, '/');
-            // Technically only the dest needs to have `/` but for aesthetic consistency
-            // convert slashes in the file arg too.
-            fileArg = file.replace(/\\/g, '/');
-        }
-        if (isGnuTar) {
-            // Suppress warnings when using GNU tar to extract archives created by BSD tar
-            args.push('--warning=no-unknown-keyword');
-            args.push('--overwrite');
-        }
-        args.push('-C', destArg, '-f', fileArg);
-        yield exec_exec(`tar`, args);
-        return dest;
-    });
-}
-/**
- * Extract a xar compatible archive
- *
- * @param file     path to the archive
- * @param dest     destination directory. Optional.
- * @param flags    flags for the xar. Optional.
- * @returns        path to the destination directory
- */
-function extractXar(file_1, dest_1) {
-    return tool_cache_awaiter(this, arguments, void 0, function* (file, dest, flags = []) {
-        ok(IS_MAC, 'extractXar() not supported on current OS');
-        ok(file, 'parameter "file" is required');
-        dest = yield _createExtractFolder(dest);
-        let args;
-        if (flags instanceof Array) {
-            args = flags;
-        }
-        else {
-            args = [flags];
-        }
-        args.push('-x', '-C', dest, '-f', file);
-        if (core.isDebug()) {
-            args.push('-v');
-        }
-        const xarPath = yield io.which('xar', true);
-        yield exec(`"${xarPath}"`, _unique(args));
-        return dest;
-    });
-}
-/**
- * Extract a zip
- *
- * @param file     path to the zip
- * @param dest     destination directory. Optional.
- * @returns        path to the destination directory
- */
-function extractZip(file, dest) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        if (!file) {
-            throw new Error("parameter 'file' is required");
-        }
-        dest = yield _createExtractFolder(dest);
-        if (tool_cache_IS_WINDOWS) {
-            yield extractZipWin(file, dest);
-        }
-        else {
-            yield extractZipNix(file, dest);
-        }
-        return dest;
-    });
-}
-function extractZipWin(file, dest) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        // build the powershell command
-        const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, ''); // double-up single quotes, remove double quotes and newlines
-        const escapedDest = dest.replace(/'/g, "''").replace(/"|\n|\r/g, '');
-        const pwshPath = yield which('pwsh', false);
-        //To match the file overwrite behavior on nix systems, we use the overwrite = true flag for ExtractToDirectory
-        //and the -Force flag for Expand-Archive as a fallback
-        if (pwshPath) {
-            //attempt to use pwsh with ExtractToDirectory, if this fails attempt Expand-Archive
-            const pwshCommand = [
-                `$ErrorActionPreference = 'Stop' ;`,
-                `try { Add-Type -AssemblyName System.IO.Compression.ZipFile } catch { } ;`,
-                `try { [System.IO.Compression.ZipFile]::ExtractToDirectory('${escapedFile}', '${escapedDest}', $true) }`,
-                `catch { if (($_.Exception.GetType().FullName -eq 'System.Management.Automation.MethodException') -or ($_.Exception.GetType().FullName -eq 'System.Management.Automation.RuntimeException') ){ Expand-Archive -LiteralPath '${escapedFile}' -DestinationPath '${escapedDest}' -Force } else { throw $_ } } ;`
-            ].join(' ');
-            const args = [
-                '-NoLogo',
-                '-NoProfile',
-                '-NonInteractive',
-                '-ExecutionPolicy',
-                'Unrestricted',
-                '-Command',
-                pwshCommand
-            ];
-            core_debug(`Using pwsh at path: ${pwshPath}`);
-            yield exec_exec(`"${pwshPath}"`, args);
-        }
-        else {
-            const powershellCommand = [
-                `$ErrorActionPreference = 'Stop' ;`,
-                `try { Add-Type -AssemblyName System.IO.Compression.FileSystem } catch { } ;`,
-                `if ((Get-Command -Name Expand-Archive -Module Microsoft.PowerShell.Archive -ErrorAction Ignore)) { Expand-Archive -LiteralPath '${escapedFile}' -DestinationPath '${escapedDest}' -Force }`,
-                `else {[System.IO.Compression.ZipFile]::ExtractToDirectory('${escapedFile}', '${escapedDest}', $true) }`
-            ].join(' ');
-            const args = [
-                '-NoLogo',
-                '-Sta',
-                '-NoProfile',
-                '-NonInteractive',
-                '-ExecutionPolicy',
-                'Unrestricted',
-                '-Command',
-                powershellCommand
-            ];
-            const powershellPath = yield which('powershell', true);
-            core_debug(`Using powershell at path: ${powershellPath}`);
-            yield exec_exec(`"${powershellPath}"`, args);
-        }
-    });
-}
-function extractZipNix(file, dest) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        const unzipPath = yield which('unzip', true);
-        const args = [file];
-        if (!isDebug()) {
-            args.unshift('-q');
-        }
-        args.unshift('-o'); //overwrite with -o, otherwise a prompt is shown which freezes the run
-        yield exec_exec(`"${unzipPath}"`, args, { cwd: dest });
-    });
-}
-/**
- * Caches a directory and installs it into the tool cacheDir
- *
- * @param sourceDir    the directory to cache into tools
- * @param tool          tool name
- * @param version       version of the tool.  semver format
- * @param arch          architecture of the tool.  Optional.  Defaults to machine architecture
- */
-function cacheDir(sourceDir, tool, version, arch) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        version = node_modules_semver.clean(version) || version;
-        arch = arch || external_os_namespaceObject.arch();
-        core_debug(`Caching tool ${tool} ${version} ${arch}`);
-        core_debug(`source dir: ${sourceDir}`);
-        if (!external_fs_namespaceObject.statSync(sourceDir).isDirectory()) {
-            throw new Error('sourceDir is not a directory');
-        }
-        // Create the tool dir
-        const destPath = yield _createToolPath(tool, version, arch);
-        // copy each child item. do not move. move can fail on Windows
-        // due to anti-virus software having an open handle on a file.
-        for (const itemName of external_fs_namespaceObject.readdirSync(sourceDir)) {
-            const s = external_path_namespaceObject.join(sourceDir, itemName);
-            yield io_cp(s, destPath, { recursive: true });
-        }
-        // write .complete
-        _completeToolPath(tool, version, arch);
-        return destPath;
-    });
-}
-/**
- * Caches a downloaded file (GUID) and installs it
- * into the tool cache with a given targetName
- *
- * @param sourceFile    the file to cache into tools.  Typically a result of downloadTool which is a guid.
- * @param targetFile    the name of the file name in the tools directory
- * @param tool          tool name
- * @param version       version of the tool.  semver format
- * @param arch          architecture of the tool.  Optional.  Defaults to machine architecture
- */
-function cacheFile(sourceFile, targetFile, tool, version, arch) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        version = semver.clean(version) || version;
-        arch = arch || os.arch();
-        core.debug(`Caching tool ${tool} ${version} ${arch}`);
-        core.debug(`source file: ${sourceFile}`);
-        if (!fs.statSync(sourceFile).isFile()) {
-            throw new Error('sourceFile is not a file');
-        }
-        // create the tool dir
-        const destFolder = yield _createToolPath(tool, version, arch);
-        // copy instead of move. move can fail on Windows due to
-        // anti-virus software having an open handle on a file.
-        const destPath = path.join(destFolder, targetFile);
-        core.debug(`destination file ${destPath}`);
-        yield io.cp(sourceFile, destPath);
-        // write .complete
-        _completeToolPath(tool, version, arch);
-        return destFolder;
-    });
-}
-/**
- * Finds the path to a tool version in the local installed tool cache
- *
- * @param toolName      name of the tool
- * @param versionSpec   version of the tool
- * @param arch          optional arch.  defaults to arch of computer
- */
-function find(toolName, versionSpec, arch) {
-    if (!toolName) {
-        throw new Error('toolName parameter is required');
-    }
-    if (!versionSpec) {
-        throw new Error('versionSpec parameter is required');
-    }
-    arch = arch || external_os_namespaceObject.arch();
-    // attempt to resolve an explicit version
-    if (!isExplicitVersion(versionSpec)) {
-        const localVersions = findAllVersions(toolName, arch);
-        const match = evaluateVersions(localVersions, versionSpec);
-        versionSpec = match;
-    }
-    // check for the explicit version in the cache
-    let toolPath = '';
-    if (versionSpec) {
-        versionSpec = node_modules_semver.clean(versionSpec) || '';
-        const cachePath = external_path_namespaceObject.join(_getCacheDirectory(), toolName, versionSpec, arch);
-        core_debug(`checking cache: ${cachePath}`);
-        if (external_fs_namespaceObject.existsSync(cachePath) && external_fs_namespaceObject.existsSync(`${cachePath}.complete`)) {
-            core_debug(`Found tool in cache ${toolName} ${versionSpec} ${arch}`);
-            toolPath = cachePath;
-        }
-        else {
-            core_debug('not found');
-        }
-    }
-    return toolPath;
-}
-/**
- * Finds the paths to all versions of a tool that are installed in the local tool cache
- *
- * @param toolName  name of the tool
- * @param arch      optional arch.  defaults to arch of computer
- */
-function findAllVersions(toolName, arch) {
-    const versions = [];
-    arch = arch || external_os_namespaceObject.arch();
-    const toolPath = external_path_namespaceObject.join(_getCacheDirectory(), toolName);
-    if (external_fs_namespaceObject.existsSync(toolPath)) {
-        const children = external_fs_namespaceObject.readdirSync(toolPath);
-        for (const child of children) {
-            if (isExplicitVersion(child)) {
-                const fullPath = external_path_namespaceObject.join(toolPath, child, arch || '');
-                if (external_fs_namespaceObject.existsSync(fullPath) && external_fs_namespaceObject.existsSync(`${fullPath}.complete`)) {
-                    versions.push(child);
-                }
-            }
-        }
-    }
-    return versions;
-}
-function getManifestFromRepo(owner_1, repo_1, auth_1) {
-    return tool_cache_awaiter(this, arguments, void 0, function* (owner, repo, auth, branch = 'master') {
-        let releases = [];
-        const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}`;
-        const http = new httpm.HttpClient('tool-cache');
-        const headers = {};
-        if (auth) {
-            core.debug('set auth');
-            headers.authorization = auth;
-        }
-        const response = yield http.getJson(treeUrl, headers);
-        if (!response.result) {
-            return releases;
-        }
-        let manifestUrl = '';
-        for (const item of response.result.tree) {
-            if (item.path === 'versions-manifest.json') {
-                manifestUrl = item.url;
-                break;
-            }
-        }
-        headers['accept'] = 'application/vnd.github.VERSION.raw';
-        let versionsRaw = yield (yield http.get(manifestUrl, headers)).readBody();
-        if (versionsRaw) {
-            // shouldn't be needed but protects against invalid json saved with BOM
-            versionsRaw = versionsRaw.replace(/^\uFEFF/, '');
-            try {
-                releases = JSON.parse(versionsRaw);
-            }
-            catch (_a) {
-                core.debug('Invalid json');
-            }
-        }
-        return releases;
-    });
-}
-function findFromManifest(versionSpec_1, stable_1, manifest_1) {
-    return tool_cache_awaiter(this, arguments, void 0, function* (versionSpec, stable, manifest, archFilter = os.arch()) {
-        // wrap the internal impl
-        const match = yield mm._findMatch(versionSpec, stable, manifest, archFilter);
-        return match;
-    });
-}
-function _createExtractFolder(dest) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        if (!dest) {
-            // create a temp dir
-            dest = external_path_namespaceObject.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
-        }
-        yield mkdirP(dest);
-        return dest;
-    });
-}
-function _createToolPath(tool, version, arch) {
-    return tool_cache_awaiter(this, void 0, void 0, function* () {
-        const folderPath = external_path_namespaceObject.join(_getCacheDirectory(), tool, node_modules_semver.clean(version) || version, arch || '');
-        core_debug(`destination ${folderPath}`);
-        const markerPath = `${folderPath}.complete`;
-        yield rmRF(folderPath);
-        yield rmRF(markerPath);
-        yield mkdirP(folderPath);
-        return folderPath;
-    });
-}
-function _completeToolPath(tool, version, arch) {
-    const folderPath = external_path_namespaceObject.join(_getCacheDirectory(), tool, node_modules_semver.clean(version) || version, arch || '');
-    const markerPath = `${folderPath}.complete`;
-    external_fs_namespaceObject.writeFileSync(markerPath, '');
-    core_debug('finished caching tool');
-}
-/**
- * Check if version string is explicit
- *
- * @param versionSpec      version string to check
- */
-function isExplicitVersion(versionSpec) {
-    const c = node_modules_semver.clean(versionSpec) || '';
-    core_debug(`isExplicit: ${c}`);
-    const valid = node_modules_semver.valid(c) != null;
-    core_debug(`explicit? ${valid}`);
-    return valid;
-}
-/**
- * Get the highest satisfiying semantic version in `versions` which satisfies `versionSpec`
- *
- * @param versions        array of versions to evaluate
- * @param versionSpec     semantic version spec to satisfy
- */
-function evaluateVersions(versions, versionSpec) {
-    let version = '';
-    core_debug(`evaluating ${versions.length} versions`);
-    versions = versions.sort((a, b) => {
-        if (node_modules_semver.gt(a, b)) {
-            return 1;
-        }
-        return -1;
-    });
-    for (let i = versions.length - 1; i >= 0; i--) {
-        const potential = versions[i];
-        const satisfied = node_modules_semver.satisfies(potential, versionSpec);
-        if (satisfied) {
-            version = potential;
-            break;
-        }
-    }
-    if (version) {
-        core_debug(`matched: ${version}`);
-    }
-    else {
-        core_debug('match not found');
-    }
-    return version;
-}
-/**
- * Gets RUNNER_TOOL_CACHE
- */
-function _getCacheDirectory() {
-    const cacheDirectory = process.env['RUNNER_TOOL_CACHE'] || '';
-    (0,external_assert_.ok)(cacheDirectory, 'Expected RUNNER_TOOL_CACHE to be defined');
-    return cacheDirectory;
-}
-/**
- * Gets RUNNER_TEMP
- */
-function _getTempDirectory() {
-    const tempDirectory = process.env['RUNNER_TEMP'] || '';
-    (0,external_assert_.ok)(tempDirectory, 'Expected RUNNER_TEMP to be defined');
-    return tempDirectory;
-}
-/**
- * Gets a global variable
- */
-function _getGlobal(key, defaultValue) {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    const value = global[key];
-    /* eslint-enable @typescript-eslint/no-explicit-any */
-    return value !== undefined ? value : defaultValue;
-}
-/**
- * Returns an array of unique values.
- * @param values Values to make unique.
- */
-function _unique(values) {
-    return Array.from(new Set(values));
-}
-//# sourceMappingURL=tool-cache.js.map
-// EXTERNAL MODULE: external "node:crypto"
-var external_node_crypto_ = __nccwpck_require__(7598);
-;// CONCATENATED MODULE: external "node:fs"
-const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
-;// CONCATENATED MODULE: ./src/integrity.ts
-
-
-/**
- * Verifies that the file at `path` matches `digest` (format `"algorithm:hex"`).
- * Emits a `warning` and returns without error when `digest` is `null`.
- *
- * @throws For a malformed digest string, an unsupported algorithm, or a checksum mismatch.
- */
-async function verifyDigest(path, digest, warning) {
-    if (digest === null) {
-        warning('GitHub does not provide a digest for this older release asset; relying on HTTPS transport integrity.');
-        return;
-    }
-    const separator = digest.indexOf(':');
-    if (separator === -1) {
-        throw new Error('Malformed release asset digest: expected format "algorithm:hex", got "' +
-            digest +
-            '".');
-    }
-    const algorithm = digest.slice(0, separator);
-    const expected = digest.slice(separator + 1);
-    if (algorithm !== 'sha256') {
-        throw new Error(`Unsupported release asset digest algorithm: ${algorithm}.`);
-    }
-    const hash = (0,external_node_crypto_.createHash)('sha256');
-    for await (const chunk of (0,external_node_fs_namespaceObject.createReadStream)(path)) {
-        hash.update(chunk);
-    }
-    const actual = hash.digest('hex');
-    if (actual !== expected.toLowerCase()) {
-        throw new Error(`Release asset checksum mismatch: expected ${expected.toLowerCase()}, calculated ${actual}.`);
-    }
-}
-
 ;// CONCATENATED MODULE: ./node_modules/universal-user-agent/index.js
 function getUserAgent() {
   if (typeof navigator === "object" && "userAgent" in navigator) {
@@ -35073,13 +34226,13 @@ function Collection() {
 var VERSION = "0.0.0-development";
 
 // pkg/dist-src/defaults.js
-var dist_bundle_userAgent = `octokit-endpoint.js/${VERSION} ${getUserAgent()}`;
+var userAgent = `octokit-endpoint.js/${VERSION} ${getUserAgent()}`;
 var DEFAULTS = {
   method: "GET",
   baseUrl: "https://api.github.com",
   headers: {
     accept: "application/vnd.github.v3+json",
-    "user-agent": dist_bundle_userAgent
+    "user-agent": userAgent
   },
   mediaType: {
     format: ""
@@ -39491,6 +38644,926 @@ const dist_src_Octokit = Octokit.plugin(requestLog, legacyRestEndpointMethods, p
 );
 
 
+;// CONCATENATED MODULE: ./src/github.ts
+/** GitHub owner for the upstream Sprocket repository. */
+const OWNER = 'stjude-rust-labs';
+/** GitHub repository name for upstream Sprocket. */
+const REPOSITORY = 'sprocket';
+/** Clone URL for the upstream Sprocket repository. */
+const REPOSITORY_URL = `https://github.com/${OWNER}/${REPOSITORY}.git`;
+
+/** Returns the HTTP status carried by an Octokit-style error, when present. */
+function errorStatus(error) {
+    if (typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof error.status === 'number') {
+        return error.status;
+    }
+    return undefined;
+}
+/** Returns whether an error message identifies a GitHub API rate limit. */
+function isRateLimitError(error) {
+    return (typeof error === 'object' &&
+        error !== null &&
+        'message' in error &&
+        typeof error.message === 'string' &&
+        /rate limit/i.test(error.message));
+}
+
+;// CONCATENATED MODULE: ./src/branch.ts
+
+
+/** Creates a GitHub-backed branch API. */
+function createBranchApi(token) {
+    const octokit = new dist_src_Octokit(token === '' ? {} : { auth: token });
+    return {
+        async getBranch(branch) {
+            const response = await octokit.rest.repos.getBranch({
+                owner: OWNER,
+                repo: REPOSITORY,
+                branch,
+            });
+            return {
+                name: response.data.name,
+                commitSha: response.data.commit.sha,
+            };
+        },
+    };
+}
+/** Resolves a branch name and translates GitHub failures into action errors. */
+async function resolveBranch(input, api) {
+    const name = input.trim();
+    if (name === '') {
+        throw new Error('Sprocket branch must not be empty.');
+    }
+    try {
+        return await api.getBranch(name);
+    }
+    catch (error) {
+        const status = errorStatus(error);
+        if (status === 404) {
+            throw new Error(`Sprocket branch ${name} was not found.`, {
+                cause: error,
+            });
+        }
+        if (status === 429 || (status === 403 && isRateLimitError(error))) {
+            throw new Error('GitHub rejected the Sprocket branch request; pass github-token or retry after the API rate limit resets.', { cause: error });
+        }
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to query Sprocket branch ${name}: ${detail}`, {
+            cause: error,
+        });
+    }
+}
+
+;// CONCATENATED MODULE: external "node:child_process"
+const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
+;// CONCATENATED MODULE: external "node:fs/promises"
+const promises_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs/promises");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
+// EXTERNAL MODULE: external "node:util"
+var external_node_util_ = __nccwpck_require__(7975);
+// EXTERNAL MODULE: ./node_modules/semver/index.js
+var node_modules_semver = __nccwpck_require__(2088);
+;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/manifest.js
+var manifest_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+// Internal object for testability (allows mocking in ESM)
+const _internal = {
+    readLinuxVersionFile() {
+        const lsbReleaseFile = '/etc/lsb-release';
+        const osReleaseFile = '/etc/os-release';
+        let contents = '';
+        if (external_fs_namespaceObject.existsSync(lsbReleaseFile)) {
+            contents = external_fs_namespaceObject.readFileSync(lsbReleaseFile).toString();
+        }
+        else if (external_fs_namespaceObject.existsSync(osReleaseFile)) {
+            contents = external_fs_namespaceObject.readFileSync(osReleaseFile).toString();
+        }
+        return contents;
+    }
+};
+function _findMatch(versionSpec, stable, candidates, archFilter) {
+    return manifest_awaiter(this, void 0, void 0, function* () {
+        const platFilter = os.platform();
+        let result;
+        let match;
+        let file;
+        for (const candidate of candidates) {
+            const version = candidate.version;
+            debug(`check ${version} satisfies ${versionSpec}`);
+            if (semver.satisfies(version, versionSpec) &&
+                (!stable || candidate.stable === stable)) {
+                file = candidate.files.find(item => {
+                    debug(`${item.arch}===${archFilter} && ${item.platform}===${platFilter}`);
+                    let chk = item.arch === archFilter && item.platform === platFilter;
+                    if (chk && item.platform_version) {
+                        const osVersion = _getOsVersion();
+                        if (osVersion === item.platform_version) {
+                            chk = true;
+                        }
+                        else {
+                            chk = semver.satisfies(osVersion, item.platform_version);
+                        }
+                    }
+                    return chk;
+                });
+                if (file) {
+                    debug(`matched ${candidate.version}`);
+                    match = candidate;
+                    break;
+                }
+            }
+        }
+        if (match && file) {
+            // clone since we're mutating the file list to be only the file that matches
+            result = Object.assign({}, match);
+            result.files = [file];
+        }
+        return result;
+    });
+}
+function _getOsVersion() {
+    // TODO: add windows and other linux, arm variants
+    // right now filtering on version is only an ubuntu and macos scenario for tools we build for hosted (python)
+    const plat = os.platform();
+    let version = '';
+    if (plat === 'darwin') {
+        version = cp.execSync('sw_vers -productVersion').toString();
+    }
+    else if (plat === 'linux') {
+        // lsb_release process not in some containers, readfile
+        // Run cat /etc/lsb-release
+        // DISTRIB_ID=Ubuntu
+        // DISTRIB_RELEASE=18.04
+        // DISTRIB_CODENAME=bionic
+        // DISTRIB_DESCRIPTION="Ubuntu 18.04.4 LTS"
+        const lsbContents = _internal.readLinuxVersionFile();
+        if (lsbContents) {
+            const lines = lsbContents.split('\n');
+            for (const line of lines) {
+                const parts = line.split('=');
+                if (parts.length === 2 &&
+                    (parts[0].trim() === 'VERSION_ID' ||
+                        parts[0].trim() === 'DISTRIB_RELEASE')) {
+                    version = parts[1].trim().replace(/^"/, '').replace(/"$/, '');
+                    break;
+                }
+            }
+        }
+    }
+    return version;
+}
+// Alias for backwards compatibility
+function _readLinuxVersionFile() {
+    return _internal.readLinuxVersionFile();
+}
+//# sourceMappingURL=manifest.js.map
+;// CONCATENATED MODULE: external "stream"
+const external_stream_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("stream");
+// EXTERNAL MODULE: external "util"
+var external_util_ = __nccwpck_require__(9023);
+;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/retry-helper.js
+var retry_helper_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+/**
+ * Internal class for retries
+ */
+class RetryHelper {
+    constructor(maxAttempts, minSeconds, maxSeconds) {
+        if (maxAttempts < 1) {
+            throw new Error('max attempts should be greater than or equal to 1');
+        }
+        this.maxAttempts = maxAttempts;
+        this.minSeconds = Math.floor(minSeconds);
+        this.maxSeconds = Math.floor(maxSeconds);
+        if (this.minSeconds > this.maxSeconds) {
+            throw new Error('min seconds should be less than or equal to max seconds');
+        }
+    }
+    execute(action, isRetryable) {
+        return retry_helper_awaiter(this, void 0, void 0, function* () {
+            let attempt = 1;
+            while (attempt < this.maxAttempts) {
+                // Try
+                try {
+                    return yield action();
+                }
+                catch (err) {
+                    if (isRetryable && !isRetryable(err)) {
+                        throw err;
+                    }
+                    info(err.message);
+                }
+                // Sleep
+                const seconds = this.getSleepAmount();
+                info(`Waiting ${seconds} seconds before trying again`);
+                yield this.sleep(seconds);
+                attempt++;
+            }
+            // Last attempt
+            return yield action();
+        });
+    }
+    getSleepAmount() {
+        return (Math.floor(Math.random() * (this.maxSeconds - this.minSeconds + 1)) +
+            this.minSeconds);
+    }
+    sleep(seconds) {
+        return retry_helper_awaiter(this, void 0, void 0, function* () {
+            return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+        });
+    }
+}
+//# sourceMappingURL=retry-helper.js.map
+;// CONCATENATED MODULE: ./node_modules/@actions/tool-cache/lib/tool-cache.js
+var tool_cache_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class HTTPError extends Error {
+    constructor(httpStatusCode) {
+        super(`Unexpected HTTP response: ${httpStatusCode}`);
+        this.httpStatusCode = httpStatusCode;
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
+}
+const tool_cache_IS_WINDOWS = process.platform === 'win32';
+const IS_MAC = process.platform === 'darwin';
+const tool_cache_userAgent = 'actions/tool-cache';
+/**
+ * Download a tool from an url and stream it into a file
+ *
+ * @param url       url of tool to download
+ * @param dest      path to download tool
+ * @param auth      authorization header
+ * @param headers   other headers
+ * @returns         path to downloaded tool
+ */
+function downloadTool(url, dest, auth, headers) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        dest = dest || external_path_namespaceObject.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
+        yield mkdirP(external_path_namespaceObject.dirname(dest));
+        core_debug(`Downloading ${url}`);
+        core_debug(`Destination ${dest}`);
+        const maxAttempts = 3;
+        const minSeconds = _getGlobal('TEST_DOWNLOAD_TOOL_RETRY_MIN_SECONDS', 10);
+        const maxSeconds = _getGlobal('TEST_DOWNLOAD_TOOL_RETRY_MAX_SECONDS', 20);
+        const retryHelper = new RetryHelper(maxAttempts, minSeconds, maxSeconds);
+        return yield retryHelper.execute(() => tool_cache_awaiter(this, void 0, void 0, function* () {
+            return yield downloadToolAttempt(url, dest || '', auth, headers);
+        }), (err) => {
+            if (err instanceof HTTPError && err.httpStatusCode) {
+                // Don't retry anything less than 500, except 408 Request Timeout and 429 Too Many Requests
+                if (err.httpStatusCode < 500 &&
+                    err.httpStatusCode !== 408 &&
+                    err.httpStatusCode !== 429) {
+                    return false;
+                }
+            }
+            // Otherwise retry
+            return true;
+        });
+    });
+}
+function downloadToolAttempt(url, dest, auth, headers) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        if (external_fs_namespaceObject.existsSync(dest)) {
+            throw new Error(`Destination file path ${dest} already exists`);
+        }
+        // Get the response headers
+        const http = new lib_HttpClient(tool_cache_userAgent, [], {
+            allowRetries: false
+        });
+        if (auth) {
+            core_debug('set auth');
+            if (headers === undefined) {
+                headers = {};
+            }
+            headers.authorization = auth;
+        }
+        const response = yield http.get(url, headers);
+        if (response.message.statusCode !== 200) {
+            const err = new HTTPError(response.message.statusCode);
+            core_debug(`Failed to download from "${url}". Code(${response.message.statusCode}) Message(${response.message.statusMessage})`);
+            throw err;
+        }
+        // Download the response body
+        const pipeline = external_util_.promisify(external_stream_namespaceObject.pipeline);
+        const responseMessageFactory = _getGlobal('TEST_DOWNLOAD_TOOL_RESPONSE_MESSAGE_FACTORY', () => response.message);
+        const readStream = responseMessageFactory();
+        let succeeded = false;
+        try {
+            yield pipeline(readStream, external_fs_namespaceObject.createWriteStream(dest));
+            core_debug('download complete');
+            succeeded = true;
+            return dest;
+        }
+        finally {
+            // Error, delete dest before retry
+            if (!succeeded) {
+                core_debug('download failed');
+                try {
+                    yield rmRF(dest);
+                }
+                catch (err) {
+                    core_debug(`Failed to delete '${dest}'. ${err.message}`);
+                }
+            }
+        }
+    });
+}
+/**
+ * Extract a .7z file
+ *
+ * @param file     path to the .7z file
+ * @param dest     destination directory. Optional.
+ * @param _7zPath  path to 7zr.exe. Optional, for long path support. Most .7z archives do not have this
+ * problem. If your .7z archive contains very long paths, you can pass the path to 7zr.exe which will
+ * gracefully handle long paths. By default 7zdec.exe is used because it is a very small program and is
+ * bundled with the tool lib. However it does not support long paths. 7zr.exe is the reduced command line
+ * interface, it is smaller than the full command line interface, and it does support long paths. At the
+ * time of this writing, it is freely available from the LZMA SDK that is available on the 7zip website.
+ * Be sure to check the current license agreement. If 7zr.exe is bundled with your action, then the path
+ * to 7zr.exe can be pass to this function.
+ * @returns        path to the destination directory
+ */
+function extract7z(file, dest, _7zPath) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        ok(tool_cache_IS_WINDOWS, 'extract7z() not supported on current OS');
+        ok(file, 'parameter "file" is required');
+        dest = yield _createExtractFolder(dest);
+        const originalCwd = process.cwd();
+        process.chdir(dest);
+        if (_7zPath) {
+            try {
+                const logLevel = core.isDebug() ? '-bb1' : '-bb0';
+                const args = [
+                    'x', // eXtract files with full paths
+                    logLevel, // -bb[0-3] : set output log level
+                    '-bd', // disable progress indicator
+                    '-sccUTF-8', // set charset for for console input/output
+                    file
+                ];
+                const options = {
+                    silent: true
+                };
+                yield exec(`"${_7zPath}"`, args, options);
+            }
+            finally {
+                process.chdir(originalCwd);
+            }
+        }
+        else {
+            const escapedScript = path
+                .join(__dirname, '..', 'scripts', 'Invoke-7zdec.ps1')
+                .replace(/'/g, "''")
+                .replace(/"|\n|\r/g, ''); // double-up single quotes, remove double quotes and newlines
+            const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, '');
+            const escapedTarget = dest.replace(/'/g, "''").replace(/"|\n|\r/g, '');
+            const command = `& '${escapedScript}' -Source '${escapedFile}' -Target '${escapedTarget}'`;
+            const args = [
+                '-NoLogo',
+                '-Sta',
+                '-NoProfile',
+                '-NonInteractive',
+                '-ExecutionPolicy',
+                'Unrestricted',
+                '-Command',
+                command
+            ];
+            const options = {
+                silent: true
+            };
+            try {
+                const powershellPath = yield io.which('powershell', true);
+                yield exec(`"${powershellPath}"`, args, options);
+            }
+            finally {
+                process.chdir(originalCwd);
+            }
+        }
+        return dest;
+    });
+}
+/**
+ * Extract a compressed tar archive
+ *
+ * @param file     path to the tar
+ * @param dest     destination directory. Optional.
+ * @param flags    flags for the tar command to use for extraction. Defaults to 'xz' (extracting gzipped tars). Optional.
+ * @returns        path to the destination directory
+ */
+function extractTar(file_1, dest_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (file, dest, flags = 'xz') {
+        if (!file) {
+            throw new Error("parameter 'file' is required");
+        }
+        // Create dest
+        dest = yield _createExtractFolder(dest);
+        // Determine whether GNU tar
+        core_debug('Checking tar --version');
+        let versionOutput = '';
+        yield exec_exec('tar --version', [], {
+            ignoreReturnCode: true,
+            silent: true,
+            listeners: {
+                stdout: (data) => (versionOutput += data.toString()),
+                stderr: (data) => (versionOutput += data.toString())
+            }
+        });
+        core_debug(versionOutput.trim());
+        const isGnuTar = versionOutput.toUpperCase().includes('GNU TAR');
+        // Initialize args
+        let args;
+        if (flags instanceof Array) {
+            args = flags;
+        }
+        else {
+            args = [flags];
+        }
+        if (isDebug() && !flags.includes('v')) {
+            args.push('-v');
+        }
+        let destArg = dest;
+        let fileArg = file;
+        if (tool_cache_IS_WINDOWS && isGnuTar) {
+            args.push('--force-local');
+            destArg = dest.replace(/\\/g, '/');
+            // Technically only the dest needs to have `/` but for aesthetic consistency
+            // convert slashes in the file arg too.
+            fileArg = file.replace(/\\/g, '/');
+        }
+        if (isGnuTar) {
+            // Suppress warnings when using GNU tar to extract archives created by BSD tar
+            args.push('--warning=no-unknown-keyword');
+            args.push('--overwrite');
+        }
+        args.push('-C', destArg, '-f', fileArg);
+        yield exec_exec(`tar`, args);
+        return dest;
+    });
+}
+/**
+ * Extract a xar compatible archive
+ *
+ * @param file     path to the archive
+ * @param dest     destination directory. Optional.
+ * @param flags    flags for the xar. Optional.
+ * @returns        path to the destination directory
+ */
+function extractXar(file_1, dest_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (file, dest, flags = []) {
+        ok(IS_MAC, 'extractXar() not supported on current OS');
+        ok(file, 'parameter "file" is required');
+        dest = yield _createExtractFolder(dest);
+        let args;
+        if (flags instanceof Array) {
+            args = flags;
+        }
+        else {
+            args = [flags];
+        }
+        args.push('-x', '-C', dest, '-f', file);
+        if (core.isDebug()) {
+            args.push('-v');
+        }
+        const xarPath = yield io.which('xar', true);
+        yield exec(`"${xarPath}"`, _unique(args));
+        return dest;
+    });
+}
+/**
+ * Extract a zip
+ *
+ * @param file     path to the zip
+ * @param dest     destination directory. Optional.
+ * @returns        path to the destination directory
+ */
+function extractZip(file, dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        if (!file) {
+            throw new Error("parameter 'file' is required");
+        }
+        dest = yield _createExtractFolder(dest);
+        if (tool_cache_IS_WINDOWS) {
+            yield extractZipWin(file, dest);
+        }
+        else {
+            yield extractZipNix(file, dest);
+        }
+        return dest;
+    });
+}
+function extractZipWin(file, dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        // build the powershell command
+        const escapedFile = file.replace(/'/g, "''").replace(/"|\n|\r/g, ''); // double-up single quotes, remove double quotes and newlines
+        const escapedDest = dest.replace(/'/g, "''").replace(/"|\n|\r/g, '');
+        const pwshPath = yield which('pwsh', false);
+        //To match the file overwrite behavior on nix systems, we use the overwrite = true flag for ExtractToDirectory
+        //and the -Force flag for Expand-Archive as a fallback
+        if (pwshPath) {
+            //attempt to use pwsh with ExtractToDirectory, if this fails attempt Expand-Archive
+            const pwshCommand = [
+                `$ErrorActionPreference = 'Stop' ;`,
+                `try { Add-Type -AssemblyName System.IO.Compression.ZipFile } catch { } ;`,
+                `try { [System.IO.Compression.ZipFile]::ExtractToDirectory('${escapedFile}', '${escapedDest}', $true) }`,
+                `catch { if (($_.Exception.GetType().FullName -eq 'System.Management.Automation.MethodException') -or ($_.Exception.GetType().FullName -eq 'System.Management.Automation.RuntimeException') ){ Expand-Archive -LiteralPath '${escapedFile}' -DestinationPath '${escapedDest}' -Force } else { throw $_ } } ;`
+            ].join(' ');
+            const args = [
+                '-NoLogo',
+                '-NoProfile',
+                '-NonInteractive',
+                '-ExecutionPolicy',
+                'Unrestricted',
+                '-Command',
+                pwshCommand
+            ];
+            core_debug(`Using pwsh at path: ${pwshPath}`);
+            yield exec_exec(`"${pwshPath}"`, args);
+        }
+        else {
+            const powershellCommand = [
+                `$ErrorActionPreference = 'Stop' ;`,
+                `try { Add-Type -AssemblyName System.IO.Compression.FileSystem } catch { } ;`,
+                `if ((Get-Command -Name Expand-Archive -Module Microsoft.PowerShell.Archive -ErrorAction Ignore)) { Expand-Archive -LiteralPath '${escapedFile}' -DestinationPath '${escapedDest}' -Force }`,
+                `else {[System.IO.Compression.ZipFile]::ExtractToDirectory('${escapedFile}', '${escapedDest}', $true) }`
+            ].join(' ');
+            const args = [
+                '-NoLogo',
+                '-Sta',
+                '-NoProfile',
+                '-NonInteractive',
+                '-ExecutionPolicy',
+                'Unrestricted',
+                '-Command',
+                powershellCommand
+            ];
+            const powershellPath = yield which('powershell', true);
+            core_debug(`Using powershell at path: ${powershellPath}`);
+            yield exec_exec(`"${powershellPath}"`, args);
+        }
+    });
+}
+function extractZipNix(file, dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        const unzipPath = yield which('unzip', true);
+        const args = [file];
+        if (!isDebug()) {
+            args.unshift('-q');
+        }
+        args.unshift('-o'); //overwrite with -o, otherwise a prompt is shown which freezes the run
+        yield exec_exec(`"${unzipPath}"`, args, { cwd: dest });
+    });
+}
+/**
+ * Caches a directory and installs it into the tool cacheDir
+ *
+ * @param sourceDir    the directory to cache into tools
+ * @param tool          tool name
+ * @param version       version of the tool.  semver format
+ * @param arch          architecture of the tool.  Optional.  Defaults to machine architecture
+ */
+function cacheDir(sourceDir, tool, version, arch) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        version = node_modules_semver.clean(version) || version;
+        arch = arch || external_os_namespaceObject.arch();
+        core_debug(`Caching tool ${tool} ${version} ${arch}`);
+        core_debug(`source dir: ${sourceDir}`);
+        if (!external_fs_namespaceObject.statSync(sourceDir).isDirectory()) {
+            throw new Error('sourceDir is not a directory');
+        }
+        // Create the tool dir
+        const destPath = yield _createToolPath(tool, version, arch);
+        // copy each child item. do not move. move can fail on Windows
+        // due to anti-virus software having an open handle on a file.
+        for (const itemName of external_fs_namespaceObject.readdirSync(sourceDir)) {
+            const s = external_path_namespaceObject.join(sourceDir, itemName);
+            yield io_cp(s, destPath, { recursive: true });
+        }
+        // write .complete
+        _completeToolPath(tool, version, arch);
+        return destPath;
+    });
+}
+/**
+ * Caches a downloaded file (GUID) and installs it
+ * into the tool cache with a given targetName
+ *
+ * @param sourceFile    the file to cache into tools.  Typically a result of downloadTool which is a guid.
+ * @param targetFile    the name of the file name in the tools directory
+ * @param tool          tool name
+ * @param version       version of the tool.  semver format
+ * @param arch          architecture of the tool.  Optional.  Defaults to machine architecture
+ */
+function cacheFile(sourceFile, targetFile, tool, version, arch) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        version = semver.clean(version) || version;
+        arch = arch || os.arch();
+        core.debug(`Caching tool ${tool} ${version} ${arch}`);
+        core.debug(`source file: ${sourceFile}`);
+        if (!fs.statSync(sourceFile).isFile()) {
+            throw new Error('sourceFile is not a file');
+        }
+        // create the tool dir
+        const destFolder = yield _createToolPath(tool, version, arch);
+        // copy instead of move. move can fail on Windows due to
+        // anti-virus software having an open handle on a file.
+        const destPath = path.join(destFolder, targetFile);
+        core.debug(`destination file ${destPath}`);
+        yield io.cp(sourceFile, destPath);
+        // write .complete
+        _completeToolPath(tool, version, arch);
+        return destFolder;
+    });
+}
+/**
+ * Finds the path to a tool version in the local installed tool cache
+ *
+ * @param toolName      name of the tool
+ * @param versionSpec   version of the tool
+ * @param arch          optional arch.  defaults to arch of computer
+ */
+function find(toolName, versionSpec, arch) {
+    if (!toolName) {
+        throw new Error('toolName parameter is required');
+    }
+    if (!versionSpec) {
+        throw new Error('versionSpec parameter is required');
+    }
+    arch = arch || external_os_namespaceObject.arch();
+    // attempt to resolve an explicit version
+    if (!isExplicitVersion(versionSpec)) {
+        const localVersions = findAllVersions(toolName, arch);
+        const match = evaluateVersions(localVersions, versionSpec);
+        versionSpec = match;
+    }
+    // check for the explicit version in the cache
+    let toolPath = '';
+    if (versionSpec) {
+        versionSpec = node_modules_semver.clean(versionSpec) || '';
+        const cachePath = external_path_namespaceObject.join(_getCacheDirectory(), toolName, versionSpec, arch);
+        core_debug(`checking cache: ${cachePath}`);
+        if (external_fs_namespaceObject.existsSync(cachePath) && external_fs_namespaceObject.existsSync(`${cachePath}.complete`)) {
+            core_debug(`Found tool in cache ${toolName} ${versionSpec} ${arch}`);
+            toolPath = cachePath;
+        }
+        else {
+            core_debug('not found');
+        }
+    }
+    return toolPath;
+}
+/**
+ * Finds the paths to all versions of a tool that are installed in the local tool cache
+ *
+ * @param toolName  name of the tool
+ * @param arch      optional arch.  defaults to arch of computer
+ */
+function findAllVersions(toolName, arch) {
+    const versions = [];
+    arch = arch || external_os_namespaceObject.arch();
+    const toolPath = external_path_namespaceObject.join(_getCacheDirectory(), toolName);
+    if (external_fs_namespaceObject.existsSync(toolPath)) {
+        const children = external_fs_namespaceObject.readdirSync(toolPath);
+        for (const child of children) {
+            if (isExplicitVersion(child)) {
+                const fullPath = external_path_namespaceObject.join(toolPath, child, arch || '');
+                if (external_fs_namespaceObject.existsSync(fullPath) && external_fs_namespaceObject.existsSync(`${fullPath}.complete`)) {
+                    versions.push(child);
+                }
+            }
+        }
+    }
+    return versions;
+}
+function getManifestFromRepo(owner_1, repo_1, auth_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (owner, repo, auth, branch = 'master') {
+        let releases = [];
+        const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}`;
+        const http = new httpm.HttpClient('tool-cache');
+        const headers = {};
+        if (auth) {
+            core.debug('set auth');
+            headers.authorization = auth;
+        }
+        const response = yield http.getJson(treeUrl, headers);
+        if (!response.result) {
+            return releases;
+        }
+        let manifestUrl = '';
+        for (const item of response.result.tree) {
+            if (item.path === 'versions-manifest.json') {
+                manifestUrl = item.url;
+                break;
+            }
+        }
+        headers['accept'] = 'application/vnd.github.VERSION.raw';
+        let versionsRaw = yield (yield http.get(manifestUrl, headers)).readBody();
+        if (versionsRaw) {
+            // shouldn't be needed but protects against invalid json saved with BOM
+            versionsRaw = versionsRaw.replace(/^\uFEFF/, '');
+            try {
+                releases = JSON.parse(versionsRaw);
+            }
+            catch (_a) {
+                core.debug('Invalid json');
+            }
+        }
+        return releases;
+    });
+}
+function findFromManifest(versionSpec_1, stable_1, manifest_1) {
+    return tool_cache_awaiter(this, arguments, void 0, function* (versionSpec, stable, manifest, archFilter = os.arch()) {
+        // wrap the internal impl
+        const match = yield mm._findMatch(versionSpec, stable, manifest, archFilter);
+        return match;
+    });
+}
+function _createExtractFolder(dest) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        if (!dest) {
+            // create a temp dir
+            dest = external_path_namespaceObject.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
+        }
+        yield mkdirP(dest);
+        return dest;
+    });
+}
+function _createToolPath(tool, version, arch) {
+    return tool_cache_awaiter(this, void 0, void 0, function* () {
+        const folderPath = external_path_namespaceObject.join(_getCacheDirectory(), tool, node_modules_semver.clean(version) || version, arch || '');
+        core_debug(`destination ${folderPath}`);
+        const markerPath = `${folderPath}.complete`;
+        yield rmRF(folderPath);
+        yield rmRF(markerPath);
+        yield mkdirP(folderPath);
+        return folderPath;
+    });
+}
+function _completeToolPath(tool, version, arch) {
+    const folderPath = external_path_namespaceObject.join(_getCacheDirectory(), tool, node_modules_semver.clean(version) || version, arch || '');
+    const markerPath = `${folderPath}.complete`;
+    external_fs_namespaceObject.writeFileSync(markerPath, '');
+    core_debug('finished caching tool');
+}
+/**
+ * Check if version string is explicit
+ *
+ * @param versionSpec      version string to check
+ */
+function isExplicitVersion(versionSpec) {
+    const c = node_modules_semver.clean(versionSpec) || '';
+    core_debug(`isExplicit: ${c}`);
+    const valid = node_modules_semver.valid(c) != null;
+    core_debug(`explicit? ${valid}`);
+    return valid;
+}
+/**
+ * Get the highest satisfiying semantic version in `versions` which satisfies `versionSpec`
+ *
+ * @param versions        array of versions to evaluate
+ * @param versionSpec     semantic version spec to satisfy
+ */
+function evaluateVersions(versions, versionSpec) {
+    let version = '';
+    core_debug(`evaluating ${versions.length} versions`);
+    versions = versions.sort((a, b) => {
+        if (node_modules_semver.gt(a, b)) {
+            return 1;
+        }
+        return -1;
+    });
+    for (let i = versions.length - 1; i >= 0; i--) {
+        const potential = versions[i];
+        const satisfied = node_modules_semver.satisfies(potential, versionSpec);
+        if (satisfied) {
+            version = potential;
+            break;
+        }
+    }
+    if (version) {
+        core_debug(`matched: ${version}`);
+    }
+    else {
+        core_debug('match not found');
+    }
+    return version;
+}
+/**
+ * Gets RUNNER_TOOL_CACHE
+ */
+function _getCacheDirectory() {
+    const cacheDirectory = process.env['RUNNER_TOOL_CACHE'] || '';
+    (0,external_assert_.ok)(cacheDirectory, 'Expected RUNNER_TOOL_CACHE to be defined');
+    return cacheDirectory;
+}
+/**
+ * Gets RUNNER_TEMP
+ */
+function _getTempDirectory() {
+    const tempDirectory = process.env['RUNNER_TEMP'] || '';
+    (0,external_assert_.ok)(tempDirectory, 'Expected RUNNER_TEMP to be defined');
+    return tempDirectory;
+}
+/**
+ * Gets a global variable
+ */
+function _getGlobal(key, defaultValue) {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const value = global[key];
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    return value !== undefined ? value : defaultValue;
+}
+/**
+ * Returns an array of unique values.
+ * @param values Values to make unique.
+ */
+function _unique(values) {
+    return Array.from(new Set(values));
+}
+//# sourceMappingURL=tool-cache.js.map
+// EXTERNAL MODULE: external "node:crypto"
+var external_node_crypto_ = __nccwpck_require__(7598);
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
+;// CONCATENATED MODULE: ./src/integrity.ts
+
+
+/**
+ * Verifies that the file at `path` matches `digest` (format `"algorithm:hex"`).
+ * Emits a `warning` and returns without error when `digest` is `null`.
+ *
+ * @throws For a malformed digest string, an unsupported algorithm, or a checksum mismatch.
+ */
+async function verifyDigest(path, digest, warning) {
+    if (digest === null) {
+        warning('GitHub does not provide a digest for this older release asset; relying on HTTPS transport integrity.');
+        return;
+    }
+    const separator = digest.indexOf(':');
+    if (separator === -1) {
+        throw new Error('Malformed release asset digest: expected format "algorithm:hex", got "' +
+            digest +
+            '".');
+    }
+    const algorithm = digest.slice(0, separator);
+    const expected = digest.slice(separator + 1);
+    if (algorithm !== 'sha256') {
+        throw new Error(`Unsupported release asset digest algorithm: ${algorithm}.`);
+    }
+    const hash = (0,external_node_crypto_.createHash)('sha256');
+    for await (const chunk of (0,external_node_fs_namespaceObject.createReadStream)(path)) {
+        hash.update(chunk);
+    }
+    const actual = hash.digest('hex');
+    if (actual !== expected.toLowerCase()) {
+        throw new Error(`Release asset checksum mismatch: expected ${expected.toLowerCase()}, calculated ${actual}.`);
+    }
+}
+
 ;// CONCATENATED MODULE: ./src/platform.ts
 const PLATFORMS = new Map([
     [
@@ -39598,8 +39671,7 @@ function compare(left, right) {
 
 
 
-const OWNER = 'stjude-rust-labs';
-const REPOSITORY = 'sprocket';
+
 /** Creates a {@link ReleaseApi} backed by Octokit, authenticated with `token` when non-empty. */
 function createReleaseApi(token) {
     const octokit = new dist_src_Octokit(token === '' ? {} : { auth: token });
@@ -39661,24 +39733,6 @@ async function resolveRelease(input, api) {
     }
     const version = normalizeVersion(raw.tagName);
     return { version, assets: raw.assets };
-}
-function errorStatus(error) {
-    if (typeof error === 'object' &&
-        error !== null &&
-        'status' in error &&
-        typeof error.status === 'number') {
-        return error.status;
-    }
-    return undefined;
-}
-function isRateLimitError(error) {
-    if (typeof error === 'object' &&
-        error !== null &&
-        'message' in error &&
-        typeof error.message === 'string') {
-        return /rate limit/i.test(error.message);
-    }
-    return false;
 }
 /**
  * Finds the release asset whose filename matches `platform` inside `release`.
@@ -39767,7 +39821,116 @@ async function withContext(message, operation) {
     }
 }
 
+;// CONCATENATED MODULE: external "node:os"
+const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
+;// CONCATENATED MODULE: ./src/source-install.ts
+
+
+
+
+
+
+
+
+const executeFile = (0,external_node_util_.promisify)(external_node_child_process_namespaceObject.execFile);
+const SOURCE_VERSION_PATTERN = /^sprocket\s+v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?=$|[\s+-])/;
+const source_install_defaultDependencies = {
+    find: find,
+    cacheDir: cacheDir,
+    makeTempDirectory: () => (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), 'setup-sprocket-source-')),
+    removeDirectory: (path) => (0,promises_namespaceObject.rm)(path, { recursive: true, force: true }),
+    access: promises_namespaceObject.access,
+    async execute(file, arguments_) {
+        const result = await executeFile(file, arguments_);
+        return result.stdout;
+    },
+    info: info,
+};
+/** Extracts and normalizes the package version from `sprocket --version`. */
+function parseSprocketVersion(output) {
+    const value = output.trim();
+    const match = SOURCE_VERSION_PATTERN.exec(value);
+    if (match === null) {
+        throw new Error(`Could not determine the installed Sprocket version from ${JSON.stringify(value)}.`);
+    }
+    const [, major, minor, patch] = match;
+    if (major === undefined || minor === undefined || patch === undefined) {
+        throw new Error(`Could not determine the installed Sprocket version from ${JSON.stringify(value)}.`);
+    }
+    return `v${Number(major)}.${Number(minor)}.${Number(patch)}`;
+}
+/** Builds, caches, and smoke-tests an immutable Sprocket source revision. */
+async function installSource(revision, platform, dependencies = source_install_defaultDependencies) {
+    const cacheVersion = `0.0.0-branch.${revision.commitSha}`;
+    dependencies.info(`Checking cache for Sprocket branch \`${revision.name}\` at \`${revision.commitSha}\` for target \`${platform.target}\`.`);
+    let directory = dependencies.find('sprocket', cacheVersion, platform.target);
+    if (directory === '') {
+        dependencies.info(`No cached build found for commit \`${revision.commitSha}\`; building from source.`);
+        const root = await dependencies.makeTempDirectory();
+        try {
+            const sourceDirectory = (0,external_node_path_namespaceObject.join)(root, 'source');
+            dependencies.info(`Cloning \`${REPOSITORY_URL}\` into \`${sourceDirectory}\`.`);
+            await source_install_withContext('Failed to clone the Sprocket repository', () => dependencies.execute('git', [
+                'clone',
+                '--filter=blob:none',
+                '--no-checkout',
+                REPOSITORY_URL,
+                sourceDirectory,
+            ]));
+            dependencies.info(`Checking out commit \`${revision.commitSha}\`.`);
+            await source_install_withContext(`Failed to check out Sprocket branch ${revision.name} at ${revision.commitSha}`, () => dependencies.execute('git', [
+                '-C',
+                sourceDirectory,
+                'checkout',
+                '--detach',
+                revision.commitSha,
+            ]));
+            dependencies.info(`Building Sprocket from \`${sourceDirectory}\` with \`cargo install --locked\`.`);
+            await source_install_withContext(`Failed to install Sprocket branch ${revision.name} at ${revision.commitSha}`, () => dependencies.execute('cargo', [
+                'install',
+                '--path',
+                sourceDirectory,
+                '--locked',
+                '--root',
+                root,
+                'sprocket',
+            ]));
+            const binDirectory = (0,external_node_path_namespaceObject.join)(root, 'bin');
+            const installedExecutable = (0,external_node_path_namespaceObject.join)(binDirectory, platform.executable);
+            await source_install_withContext(`Cargo did not install ${platform.executable} for Sprocket branch ${revision.name}`, () => dependencies.access(installedExecutable));
+            dependencies.info(`Caching source build for commit \`${revision.commitSha}\`.`);
+            directory = await source_install_withContext(`Failed to cache Sprocket branch ${revision.name} at ${revision.commitSha}`, () => dependencies.cacheDir(binDirectory, 'sprocket', cacheVersion, platform.target));
+        }
+        finally {
+            await dependencies.removeDirectory(root);
+        }
+    }
+    else {
+        dependencies.info(`Using cached Sprocket branch \`${revision.name}\` from \`${directory}\`.`);
+    }
+    const executablePath = (0,external_node_path_namespaceObject.join)(directory, platform.executable);
+    dependencies.info(`Verifying executable \`${executablePath}\`.`);
+    const output = await source_install_withContext(`Installed Sprocket branch ${revision.name} at ${revision.commitSha} did not run`, () => dependencies.execute(executablePath, ['--version']));
+    const version = await source_install_withContext(`Installed Sprocket branch ${revision.name} at ${revision.commitSha} did not report a valid version`, () => parseSprocketVersion(output));
+    return {
+        directory,
+        executablePath,
+        version,
+    };
+}
+async function source_install_withContext(message, operation) {
+    try {
+        return await operation();
+    }
+    catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(`${message}: ${detail}`, { cause: error });
+    }
+}
+
 ;// CONCATENATED MODULE: ./src/main.ts
+
+
 
 
 
@@ -39778,16 +39941,19 @@ const main_defaultDependencies = {
     addPath: addPath,
     info: info,
     createReleaseApi: createReleaseApi,
+    createBranchApi: createBranchApi,
     resolveRelease: resolveRelease,
+    resolveBranch: resolveBranch,
     resolvePlatform: resolvePlatform,
     installRelease: installRelease,
+    installSource: installSource,
     environment: process.env,
 };
 /**
  * Entry point for the `setup-sprocket` GitHub Action.
- * Reads `version` and `github-token` inputs, resolves and installs the
- * requested Sprocket release, adds its directory to `PATH`, and sets the
- * `installed-version` output.
+ * Reads `version`, `branch`, and `github-token` inputs, resolves and installs
+ * the requested Sprocket release or branch, adds its directory to `PATH`, and
+ * sets the `installed-version` output.
  *
  * @throws When `RUNNER_OS` or `RUNNER_ARCH` are absent, or when any
  *   resolution or installation step fails.
@@ -39798,16 +39964,35 @@ async function run(dependencies = main_defaultDependencies) {
     if (os === undefined || arch === undefined) {
         throw new Error('RUNNER_OS and RUNNER_ARCH must be set by GitHub Actions.');
     }
-    const requestedVersion = dependencies.getInput('version').trim() || 'latest';
+    const requestedVersion = dependencies.getInput('version').trim();
+    const requestedBranch = dependencies.getInput('branch').trim();
+    if (requestedVersion !== '' && requestedBranch !== '') {
+        throw new Error('version and branch are mutually exclusive; provide only one.');
+    }
     const token = dependencies.getInput('github-token').trim();
     const platform = dependencies.resolvePlatform(os, arch);
-    const api = dependencies.createReleaseApi(token);
-    dependencies.info(`Resolving Sprocket ${requestedVersion} for ${os}/${arch}.`);
-    const release = await dependencies.resolveRelease(requestedVersion, api);
-    const installation = await dependencies.installRelease(release, platform);
+    let installation;
+    let installedVersion;
+    if (requestedBranch !== '') {
+        dependencies.info(`Resolving Sprocket branch \`${requestedBranch}\` for \`${os}/${arch}\`.`);
+        const api = dependencies.createBranchApi(token);
+        const revision = await dependencies.resolveBranch(requestedBranch, api);
+        const sourceInstallation = await dependencies.installSource(revision, platform);
+        installation = sourceInstallation;
+        installedVersion = sourceInstallation.version;
+        dependencies.info(`Installed Sprocket branch \`${revision.name}\` at \`${revision.commitSha}\` from source.`);
+    }
+    else {
+        const version = requestedVersion || 'latest';
+        dependencies.info(`Resolving Sprocket \`${version}\` for \`${os}/${arch}\`.`);
+        const api = dependencies.createReleaseApi(token);
+        const release = await dependencies.resolveRelease(version, api);
+        installation = await dependencies.installRelease(release, platform);
+        installedVersion = release.version;
+    }
     dependencies.addPath(installation.directory);
-    dependencies.setOutput('installed-version', release.version);
-    dependencies.info(`Installed Sprocket ${release.version} at ${installation.executablePath}.`);
+    dependencies.setOutput('installed-version', installedVersion);
+    dependencies.info(`Installed Sprocket \`${installedVersion}\` at \`${installation.executablePath}\`.`);
 }
 
 ;// CONCATENATED MODULE: ./src/index.ts

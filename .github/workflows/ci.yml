@@ -93,3 +93,21 @@ jobs:
         env:
           OUTCOME: ${{ steps.install.outcome }}
         run: test "$OUTCOME" = "failure"
+
+  branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Sprocket from its default branch
+        id: sprocket
+        uses: ./
+        with:
+          branch: main
+          github-token: ${{ github.token }}
+      - name: Verify branch installation
+        env:
+          INSTALLED_VERSION: ${{ steps.sprocket.outputs.installed-version }}
+        run: |
+          sprocket --version
+          test -n "$INSTALLED_VERSION"

@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  Install and cache Sprocket releases in GitHub Actions across Linux, macOS, and Windows, with version selection and SHA-256 verification.
+  Install and cache Sprocket in GitHub Actions across Linux, macOS, and Windows, from release assets or branch source builds.
   <br />
   <br />
   <a href="https://github.com/stjude-rust-labs/setup-sprocket/issues/new?assignees=&title=Descriptive%20Title&labels=enhancement">Request Feature</a>
@@ -36,6 +36,26 @@ steps:
   - run: sprocket --version
 ```
 
+## Branch builds
+
+Set `branch` to build an unreleased revision from `stjude-rust-labs/sprocket`:
+
+```yaml
+- uses: stjude-rust-labs/setup-sprocket@v1
+  with:
+    branch: main
+    github-token: ${{ github.token }}
+```
+
+`branch` and `version` are mutually exclusive. A branch build requires Cargo and
+a Rust toolchain compatible with that revision; the action does not install or
+select a toolchain.
+
+The action resolves the branch head to a full commit SHA before invoking
+`cargo install --locked` and caches the result by commit and runner platform. A
+branch can move between workflow runs, so use a release `version` when the
+installed source must remain stable without additional pinning.
+
 `version` defaults to `latest`. Exact versions may include or omit the leading
 `v`. The action supports Sprocket `v0.8.0` and newer because earlier releases do
 not contain binary assets.
@@ -54,12 +74,14 @@ The `installed-version` output contains the normalized version:
 
 ## Platforms
 
-The action understands Linux, macOS, and Windows runners on `X64` and `ARM64`.
-Installation succeeds only when the selected Sprocket release publishes the
+The action understands Linux, macOS, and Windows runners on `X64` and `ARM64`
+for both release asset selection and branch source-build cache keys. Release
+installation succeeds only when the selected Sprocket release publishes the
 matching asset.
 
-The action fails rather than building from source, selecting another version, or
-changing installation methods.
+For release installs, the action fails rather than building from source,
+selecting another version, or changing installation methods. For branch
+installs, Cargo builds the selected source revision on the runner.
 
 ## Artifact verification
 

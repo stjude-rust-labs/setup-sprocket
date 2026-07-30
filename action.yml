@@ -1,12 +1,17 @@
 name: Setup Sprocket
-description: Install a Sprocket release and add it to PATH
+description: Install a Sprocket release or branch build and add it to PATH
 author: St. Jude Rust Labs
 
 inputs:
   version:
-    description: Exact Sprocket version, with or without a leading v, or latest
+    description:
+      Exact Sprocket version, with or without a leading v, or latest; mutually
+      exclusive with branch
     required: false
-    default: latest
+  branch:
+    description:
+      Sprocket branch to build from source; mutually exclusive with version
+    required: false
   github-token:
     description: GitHub token used to query release metadata
     required: false

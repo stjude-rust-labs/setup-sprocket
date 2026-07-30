@@ -17,10 +17,11 @@ const release: Release = {
   assets: [],
 };
 
-function dependencies(version = ''): ActionDependencies {
+function dependencies(version = '', branch = ''): ActionDependencies {
   return {
     getInput: vi.fn((name: string) => {
       if (name === 'version') return version;
+      if (name === 'branch') return branch;
       if (name === 'github-token') return 'token';
       return '';
     }),
@@ -28,11 +29,21 @@ function dependencies(version = ''): ActionDependencies {
     addPath: vi.fn(),
     info: vi.fn(),
     createReleaseApi: vi.fn().mockReturnValue({}),
+    createBranchApi: vi.fn().mockReturnValue({}),
     resolveRelease: vi.fn().mockResolvedValue(release),
+    resolveBranch: vi.fn().mockResolvedValue({
+      name: 'feature/example',
+      commitSha: '0123456789abcdef0123456789abcdef01234567',
+    }),
     resolvePlatform: vi.fn().mockReturnValue(platform),
     installRelease: vi.fn().mockResolvedValue({
       directory: '/tool/sprocket',
       executablePath: '/tool/sprocket/sprocket',
+    }),
+    installSource: vi.fn().mockResolvedValue({
+      directory: '/tool/source',
+      executablePath: '/tool/source/sprocket',
+      version: 'v0.28.0',
     }),
     environment: {
       RUNNER_OS: 'Linux',
@@ -49,6 +60,14 @@ describe('run', () => {
     expect(resolveRelease).toHaveBeenCalledWith('latest', expect.anything());
     expect(addPath).toHaveBeenCalledWith('/tool/sprocket');
     expect(setOutput).toHaveBeenCalledWith('installed-version', 'v0.27.0');
+    expect(deps.info).toHaveBeenNthCalledWith(
+      1,
+      'Resolving Sprocket `latest` for `Linux/X64`.',
+    );
+    expect(deps.info).toHaveBeenNthCalledWith(
+      2,
+      'Installed Sprocket `v0.27.0` at `/tool/sprocket/sprocket`.',
+    );
   });
 
   it('passes an explicit version to release resolution', async () => {
@@ -78,5 +97,43 @@ describe('run', () => {
     await run(deps);
     const { resolveRelease } = deps;
     expect(resolveRelease).toHaveBeenCalledWith('latest', expect.anything());
+  });
+
+  it('installs an explicitly selected branch', async () => {
+    const deps = dependencies('', '  feature/example  ');
+    await run(deps);
+
+    expect(deps.resolveBranch).toHaveBeenCalledWith(
+      'feature/example',
+      expect.anything(),
+    );
+    expect(deps.installSource).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'feature/example' }),
+      platform,
+    );
+    expect(deps.addPath).toHaveBeenCalledWith('/tool/source');
+    expect(deps.resolveRelease).not.toHaveBeenCalled();
+    expect(deps.setOutput).toHaveBeenCalledWith('installed-version', 'v0.28.0');
+    expect(deps.info).toHaveBeenNthCalledWith(
+      1,
+      'Resolving Sprocket branch `feature/example` for `Linux/X64`.',
+    );
+    expect(deps.info).toHaveBeenNthCalledWith(
+      2,
+      `Installed Sprocket branch \`feature/example\` at \`0123456789abcdef0123456789abcdef01234567\` from source.`,
+    );
+    expect(deps.info).toHaveBeenNthCalledWith(
+      3,
+      'Installed Sprocket `v0.28.0` at `/tool/source/sprocket`.',
+    );
+  });
+
+  it('rejects simultaneous version and branch selectors', async () => {
+    const deps = dependencies('0.27.0', 'main');
+    await expect(run(deps)).rejects.toThrow(
+      'version and branch are mutually exclusive; provide only one.',
+    );
+    expect(deps.resolveRelease).not.toHaveBeenCalled();
+    expect(deps.resolveBranch).not.toHaveBeenCalled();
   });
 });
